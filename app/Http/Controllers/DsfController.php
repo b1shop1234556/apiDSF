@@ -84,13 +84,14 @@ class DsfController extends Controller
                 'payments.OR_number',
                 'payments.amount_paid',
                 'payments.date_of_payment',
-                'tuitions.tuition'
-
+                'tuitions.tuition',
+                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->get();
         
         return response()->json($data, 200);
     }
+    
     // public function display(){
     //     return response()->json(tuitions::all(), 200);
     // }
