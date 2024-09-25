@@ -83,6 +83,7 @@ class DsfController extends Controller
                 'enrollments.regapproval_date',
                 'payments.OR_number',
                 'payments.amount_paid',
+                'payments.proof_payment',
                 'payments.date_of_payment',
                 'tuitions.tuition',
                 DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
