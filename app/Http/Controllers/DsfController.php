@@ -82,6 +82,7 @@ class DsfController extends Controller
                 'enrollments.public_private',
                 'enrollments.school_year',
                 'enrollments.regapproval_date',
+                'enrollments.payment_approval',
                 'payments.OR_number',
                 'payments.amount_paid',
                 'payments.proof_payment',
