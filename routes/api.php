@@ -21,3 +21,4 @@ Route::post('/register', [DsfController::class, 'register']);
 Route::post('/login', [DsfController::class, 'login']);
 Route::post('/logout', [DsfController::class, 'logout'])->middleware('auth:sanctum');
 Route::get('/display', [DsfController::class, 'display']);
+Route::get('/receiptdisplay/{id}', [DsfController::class, 'receiptdisplay']);

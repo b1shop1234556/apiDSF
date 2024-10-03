@@ -18,6 +18,7 @@ class dsf extends Model
         'lname',
         'mname',
         'role',
+        'address',
         'email',
         'password'
     ];
