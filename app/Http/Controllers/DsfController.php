@@ -87,6 +87,7 @@ class DsfController extends Controller
                 'payments.amount_paid',
                 'payments.proof_payment',
                 'payments.date_of_payment',
+                'payments.description',
                 'tuitions.tuition',
                 DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
@@ -118,6 +119,7 @@ class DsfController extends Controller
                 'payments.amount_paid',
                 'payments.proof_payment',
                 'payments.date_of_payment',
+                'payments.description',
                 'tuitions.tuition',
                 DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
@@ -130,7 +132,94 @@ class DsfController extends Controller
             return response()->json(['message' => 'Student not found'], 404);
         }
     }
-    
-    
+
+    public function approveEnrollment(Request $request, $id){
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->join('payments', 'students.LRN', '=', 'payments.LRN')
+            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.year_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuitions.tuition',
+                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+            )
+            ->where('students.LRN', $id) // Filter by student ID
+            ->update(['payment_approval' => 'Approve']);
+            // ->first(); // Use first() to get a single record
+        
+        if ($data) {
+            return response()->json($data, 200);
+        } else {
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+
+    }
+
+    public function displayStudent(){
+        return response()->json(students::all(), 200);
+    }
+
+    public function displaygrade(){
+        return response()->json(tuitions::orderBy('year_level','asc')->get(),200);
+    }
+
+    public function displaySOA(Request $request, $id) {
+        $data = DB::table('students')
+            ->join('enrollments', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
+            ->leftJoin('financials', 'students.LRN', '=', 'financials.LRN')
+            ->leftJoin('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level') // Join with tuitions
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.year_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuitions.tuition',
+                'financials.*', 
+                DB::raw('IFNULL(tuitions.tuition, 0) - IFNULL(payments.amount_paid, 0) AS remaining_balance') // Calculate remaining balance
+            )
+            ->where('students.LRN', $id) // Filter by student ID
+            ->get(); // Use get() to get all records
+            
+        if ($data->isNotEmpty()) {
+            return response()->json($data, 200);
+        } else {
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+    }
     
 }
