@@ -89,7 +89,7 @@ class DsfController extends Controller
                 'payments.date_of_payment',
                 'payments.description',
                 'tuitions.tuition',
-                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') 
             )
             ->get();
         
@@ -175,6 +175,37 @@ class DsfController extends Controller
     }
 
     public function displayStudent(){
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->join('payments', 'students.LRN', '=', 'payments.LRN')
+            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.year_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuitions.tuition',
+                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') 
+            )
+            ->get();
+        
+        return response()->json($data, 200);
         return response()->json(students::all(), 200);
     }
 
