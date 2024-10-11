@@ -253,4 +253,31 @@ class DsfController extends Controller
         }
     }
     
+    public function addpayment(Request $request) {
+        $request->validate([
+            'OR_number' => "required|string",
+            'date_of_payment' => "required|date",
+            'description' => 'required|string',
+            'amount_paid' => 'required|numeric',
+            'LRN' => 'required|string',
+        ]);
+    
+        DB::table('payments')->insert([
+            'OR_number' => $request->OR_number,
+            'date_of_payment' => $request->date_of_payment,
+            'description' => $request->description,
+            'amount_paid' => $request->amount_paid,
+            'LRN' => $request->LRN,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    
+        $payments = DB::table('payments')->orderBy('created_at', 'desc')->get();
+    
+        return response()->json([ // Corrected this line
+            'message' => 'Success',
+            'data' => $payments,
+        ], 201);
+    }
+    
 }

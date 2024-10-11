@@ -26,5 +26,6 @@ Route::get('/approveEnrollment/{id}', [DsfController::class, 'approveEnrollment'
 Route::get('/displaygrade', [DsfController::class, 'displaygrade']);
 Route::get('/displaySOA/{id}', [DsfController::class, 'displaySOA']);
 Route::get('/displayStudent', [DsfController::class, 'displayStudent']);
+Route::post('/addpayment', [DsfController::class, 'addpayment']);
 
 
