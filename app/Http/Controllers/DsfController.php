@@ -234,6 +234,7 @@ class DsfController extends Controller
                 'enrollments.public_private',
                 'enrollments.school_year',
                 'enrollments.regapproval_date',
+                'enrollments.payment_approval',
                 'payments.OR_number',
                 'payments.amount_paid',
                 'payments.proof_payment',
@@ -253,18 +254,24 @@ class DsfController extends Controller
         }
     }
     
-    public function addpayment(Request $request) {
+    public function updatepayment(Request $request, $id) {
         $request->validate([
             'OR_number' => "required|string",
-            'date_of_payment' => "required|date",
             'description' => 'required|string',
             'amount_paid' => 'required|numeric',
             'LRN' => 'required|string',
         ]);
     
-        DB::table('payments')->insert([
+        // Find the payment record by LRN
+        $payment = DB::table('payments')->where('LRN', $id)->first();
+    
+        if (!$payment) {
+            return response()->json(['message' => 'Payment not found'], 404);
+        }
+    
+        // Update the payment record
+        DB::table('payments')->where('LRN', $id)->update([
             'OR_number' => $request->OR_number,
-            'date_of_payment' => $request->date_of_payment,
             'description' => $request->description,
             'amount_paid' => $request->amount_paid,
             'LRN' => $request->LRN,
@@ -272,12 +279,12 @@ class DsfController extends Controller
             'updated_at' => now(),
         ]);
     
+        // Retrieve the updated payments
         $payments = DB::table('payments')->orderBy('created_at', 'desc')->get();
     
-        return response()->json([ // Corrected this line
+        return response()->json([
             'message' => 'Success',
             'data' => $payments,
-        ], 201);
-    }
-    
+        ], 200);
+    }      
 }
