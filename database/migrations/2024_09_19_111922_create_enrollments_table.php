@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('LRN', 255); // VARCHAR(255)
             $table->date('regapproval_date'); // DATE
             $table->tinyInteger('payment_approval'); // TINYINT(1)
-            $table->integer('year_level'); // INT
+            $table->integer('grade_level'); // INT
             $table->string('contact_no', 15); // VARCHAR(15)
             $table->string('guardian_name', 100); // VARCHAR(100)
             $table->string('last_attended', 100); // VARCHAR(100)

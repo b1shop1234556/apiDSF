@@ -66,7 +66,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -75,7 +75,7 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
-                'enrollments.year_level',
+                'enrollments.grade_level',
                 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -88,8 +88,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions.tuition',
-                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') 
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
             )
             ->get();
         
@@ -99,7 +99,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -108,7 +108,7 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
-                'enrollments.year_level',
+                'enrollments.grade_level',
                 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -120,8 +120,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions.tuition',
-                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->first(); // Use first() to get a single record
@@ -137,7 +137,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -146,7 +146,7 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
-                'enrollments.year_level',
+                'enrollments.grade_level',
                 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -159,8 +159,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions.tuition',
-                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->update(['payment_approval' => 'Approve']);
@@ -178,7 +178,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level')
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -187,7 +187,7 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
-                'enrollments.year_level',
+                'enrollments.grade_level',
                 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -200,8 +200,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions.tuition',
-                DB::raw('tuitions.tuition - payments.amount_paid AS remaining_balance') 
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
             )
             ->get();
         
@@ -210,15 +210,15 @@ class DsfController extends Controller
     }
 
     public function displaygrade(){
-        return response()->json(tuitions::orderBy('year_level','asc')->get(),200);
+        return response()->json(tuitions_and_fees::orderBy('grade_level','asc')->get(),200);
     }
 
     public function displaySOA(Request $request, $id) {
         $data = DB::table('students')
             ->join('enrollments', 'enrollments.LRN', '=', 'students.LRN')
             ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
-            ->leftJoin('financials', 'students.LRN', '=', 'financials.LRN')
-            ->leftJoin('tuitions', 'enrollments.year_level', '=', 'tuitions.year_level') // Join with tuitions
+            ->leftJoin('financial_statements', 'students.LRN', '=', 'financial_statements.LRN')
+            ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level') // Join with tuitions
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -227,7 +227,7 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
-                'enrollments.year_level',
+                'enrollments.grade_level',
                 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -240,9 +240,9 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions.tuition',
-                'financials.*', 
-                DB::raw('IFNULL(tuitions.tuition, 0) - IFNULL(payments.amount_paid, 0) AS remaining_balance') // Calculate remaining balance
+                'tuitions_and_fees.tuition',
+                'financial_statements.*', 
+                DB::raw('IFNULL(tuitions_and_fees.tuition, 0) - IFNULL(payments.amount_paid, 0) AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->get(); // Use get() to get all records
@@ -287,4 +287,21 @@ class DsfController extends Controller
             'data' => $payments,
         ], 200);
     }      
+
+    //for msg section....
+    public function sendMessage(Request $request)
+        {
+            $message = new Message();
+            $message->text = $request->input('text');
+            $message->sender = $request->input('sender');
+            $message->receiver = $request->input('receiver');
+            $message->save();
+            return response()->json(['message' => 'Message sent successfully']);
+        }
+
+        public function getMessages()
+        {
+            $messages = Message::all();
+            return response()->json($messages);
+        }
 }

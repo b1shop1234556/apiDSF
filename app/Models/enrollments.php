@@ -16,7 +16,7 @@ class enrollments extends Model
         'LRN',
         'regapproval_date',
         'payment_approval',
-        'year_level',
+        'grade_level',
         'contact_no',
         'guardian_name',
         'last_attended',
