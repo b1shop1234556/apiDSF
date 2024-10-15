@@ -91,6 +91,29 @@ class DsfController extends Controller
                 'tuitions_and_fees.tuition',
                 DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
             )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuitions_and_fees.tuition',
+            )
             ->get();
         
         return response()->json($data, 200);
@@ -184,24 +207,47 @@ class DsfController extends Controller
                 'students.lname',
                 'students.fname',
                 'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'enrollments.grade_level',
-                'enrollments.contact_no',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
+                // 'students.suffix',
+                // 'students.gender',
+                // 'students.address',
+                // 'enrollments.grade_level',
+                // 'enrollments.contact_no',
+                // 'enrollments.date_register',
+                // 'enrollments.guardian_name',
+                // 'enrollments.public_private',
+                // 'enrollments.school_year',
+                // 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
-                'payments.OR_number',
-                'payments.amount_paid',
-                'payments.proof_payment',
-                'payments.date_of_payment',
-                'payments.description',
-                'tuitions_and_fees.tuition',
-                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
+                // 'payments.OR_number',
+                // 'payments.amount_paid',
+                // 'payments.proof_payment',
+                // 'payments.date_of_payment',
+                // 'payments.description',
+                // 'tuitions_and_fees.tuition',
+                // DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                // 'students.suffix',
+                // 'students.gender',
+                // 'students.address',
+                // 'enrollments.grade_level',
+                // 'enrollments.contact_no',
+                // 'enrollments.date_register',
+                // 'enrollments.guardian_name',
+                // 'enrollments.public_private',
+                // 'enrollments.school_year',
+                // 'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                // 'payments.OR_number',
+                // 'payments.amount_paid',
+                // 'payments.proof_payment',
+                // 'payments.date_of_payment',
+                // 'payments.description',
+                // 'tuitions_and_fees.tuition',
             )
             ->get();
         
@@ -213,46 +259,165 @@ class DsfController extends Controller
         return response()->json(tuitions_and_fees::orderBy('grade_level','asc')->get(),200);
     }
 
+    // public function displaySOA(Request $request, $id) {
+    //     // Fetch student data and associated financial details
+    //     $studentData = DB::table('students')
+    //         ->join('enrollments', 'enrollments.LRN', '=', 'students.LRN')
+    //         ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+    //         ->leftJoin('payments', 'payments.LRN', '=', 'students.LRN') // Join payments here
+    //         ->select(
+    //             'students.LRN',
+    //             'students.lname',
+    //             'students.fname',
+    //             'students.mname',
+    //             'students.suffix',
+    //             'students.gender',
+    //             'students.address',
+    //             'enrollments.grade_level',
+    //             'enrollments.contact_no',
+    //             'enrollments.date_register',
+    //             'enrollments.guardian_name',
+    //             'enrollments.public_private',
+    //             'enrollments.school_year',
+    //             'enrollments.regapproval_date',
+    //             'enrollments.payment_approval',
+    //             'tuitions_and_fees.tuition',
+    //             DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
+    //             DB::raw('SUM(tuitions_and_fees.tuition) - SUM(payments.amount_paid) as total')
+
+    //         )
+    //         ->where('students.LRN', $id)
+    //         ->groupBy(
+    //             'students.LRN',
+    //             'students.lname',
+    //             'students.fname',
+    //             'students.mname',
+    //             'students.suffix',
+    //             'students.gender',
+    //             'students.address',
+    //             'enrollments.grade_level',
+    //             'enrollments.contact_no',
+    //             'enrollments.date_register',
+    //             'enrollments.guardian_name',
+    //             'enrollments.public_private',
+    //             'enrollments.school_year',
+    //             'enrollments.regapproval_date',
+    //             'enrollments.payment_approval',
+    //             'tuitions_and_fees.tuition'
+    //         )
+    //         ->first(); // Use first() to get a single record
+    
+    //     if ($studentData) {
+    //         // Fetch detailed payments for the student
+    //         $payments = DB::table('payments')
+    //             ->join('enrollments', 'payments.LRN', '=', 'enrollments.LRN')
+    //             ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+    //             ->where('payments.LRN', $id)
+    //             ->select(
+    //                 'payments.amount_paid',
+    //                 'payments.description',
+    //                 'payments.OR_number',
+    //                 'payments.date_of_payment',
+    //                 // 'tuitions_and_fees.tuition',
+    //                 DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
+    //                 DB::raw('COALESCE(SUM(tuitions_and_fees.tuition), 0) AS total_tuition'),
+    //                 DB::raw('(COALESCE(SUM(tuitions_and_fees.tuition), 0) - COALESCE(SUM(payments.amount_paid), 0)) AS tal'),
+    //                 DB::raw('(COALESCE(SUM(tuitions_and_fees.tuition), 0) - (COALESCE(SUM(tuitions_and_fees.tuition), 0) - COALESCE(SUM(payments.amount_paid), 0))) AS final')                    
+    //             )
+    //             ->groupBy(
+    //                 'payments.amount_paid',
+    //                 'payments.description',
+    //                 'payments.OR_number',
+    //                 'payments.date_of_payment',
+    //                 // 'tuitions_and_fees.tuition',
+    //             )
+    //             ->get();
+
+    //         // Calculate total of "tal"
+    //         // $totalTal = $payments->sum('tal');
+    
+    //         // Calculate total charges (tuition fees)
+    //         $tuition = $studentData->tuition ?? 0;
+    
+    //         // Calculate total payments (already calculated in studentData)
+    //         $totalPaid = $studentData->total_paid;
+    
+    //         // Calculate remaining balance
+    //         $remainingBalance = $tuition - $totalPaid;
+    
+    //         // Prepare the response data
+    //         $response = [
+    //             'student_info' => $studentData,
+    //             'charges' => [
+    //                 'description' => 'Tuition Fees',
+    //                 'amount' => $tuition,
+    //             ],
+    //             'payments' => $payments,
+    //             'total_paid' => $totalPaid,
+    //             'remaining_balance' => $remainingBalance,
+    //         ];
+    
+    //         return response()->json($response, 200);
+    //     } else {
+    //         return response()->json(['message' => 'Student not found'], 404);
+    //     }
+    // }
     public function displaySOA(Request $request, $id) {
-        $data = DB::table('students')
-            ->join('enrollments', 'enrollments.LRN', '=', 'students.LRN')
-            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
-            ->leftJoin('financial_statements', 'students.LRN', '=', 'financial_statements.LRN')
-            ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level') // Join with tuitions
-            ->select(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'enrollments.grade_level',
-                'enrollments.contact_no',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'enrollments.payment_approval',
-                'payments.OR_number',
-                'payments.amount_paid',
-                'payments.proof_payment',
-                'payments.date_of_payment',
-                'payments.description',
-                'tuitions_and_fees.tuition',
-                'financial_statements.*', 
-                DB::raw('IFNULL(tuitions_and_fees.tuition, 0) - IFNULL(payments.amount_paid, 0) AS remaining_balance') // Calculate remaining balance
-            )
-            ->where('students.LRN', $id) // Filter by student ID
-            ->get(); // Use get() to get all records
-            
-        if ($data->isNotEmpty()) {
-            return response()->json($data, 200);
-        } else {
-            return response()->json(['message' => 'Student not found'], 404);
-        }
+        $payments = DB::table('payments')
+                ->join('enrollments', 'payments.LRN', '=', 'enrollments.LRN')
+                ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+                ->where('payments.LRN', $id)
+                ->select(
+                    'payments.amount_paid',
+                    'payments.description',
+                    'payments.OR_number',
+                    'payments.date_of_payment',
+                    'tuitions_and_fees.tuition',
+                    DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
+                    DB::raw('COALESCE(SUM(tuitions_and_fees.tuition), 0) AS total_tuition')
+                )
+                ->groupBy(
+                    'payments.amount_paid',
+                    'payments.description',
+                    'payments.OR_number',
+                    'payments.date_of_payment',
+                    'tuitions_and_fees.tuition',
+                )
+                ->get();
+
+            // Calculate the tuition fee (assumed to be the same for the student)
+            $tuition = $payments->isNotEmpty() ? $payments[0]->total_tuition : 0;
+
+            // Initialize remaining balance
+            $remainingBalance = $tuition;
+
+            // Create an array to hold the payment details with running balance
+            $paymentDetails = [];
+
+            foreach ($payments as $payment) {
+                // Subtract the current payment from the remaining balance
+                $remainingBalance -= $payment->amount_paid;
+
+                // Add to payment details with the current balance
+                $paymentDetails[] = [
+                    'tuition' => $payment->tuition,
+                    'OR_number' => $payment->OR_number,
+                    'description' => $payment->description,
+                    'amount_paid' => $payment->amount_paid,
+                    'date_of_payment' => $payment->date_of_payment,
+                    'remaining_balance' => $remainingBalance
+                ];
+            }
+
+            // You can now return or use $paymentDetails as needed
+            return response()->json([
+                'tuition_fee' => $tuition,
+                'payments' => $paymentDetails,
+                'remaining_balance' => $remainingBalance,
+            ], 200);
+
     }
+    
     
     public function updatepayment(Request $request, $id) {
         $request->validate([
