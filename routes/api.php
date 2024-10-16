@@ -23,6 +23,7 @@ Route::post('/register', [DsfController::class, 'register']);
 Route::post('/login', [DsfController::class, 'login']);
 Route::post('/logout', [DsfController::class, 'logout'])->middleware('auth:sanctum');
 
+Route::get('displaylist', [DsfController::class, 'displaylist']);
 Route::get('/display', [DsfController::class, 'display']);
 Route::get('/receiptdisplay/{id}', [DsfController::class, 'receiptdisplay']);
 
@@ -32,5 +33,8 @@ Route::get('/displaySOA/{id}', [DsfController::class, 'displaySOA']);
 Route::get('/displayStudent', [DsfController::class, 'displayStudent']);
 
 Route::put('/updatepayment/{id}', [DsfController::class, 'updatepayment']);
+
+//for msg
+Route::put('/getMessages', [DsfController::class, 'getMessages']);
 
 

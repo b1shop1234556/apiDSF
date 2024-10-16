@@ -7,6 +7,7 @@ use App\Models\dsf;
 use App\Models\students;
 use App\Models\enrollments;
 use App\Models\payments;
+use App\Models\messages;
 use App\Models\tuitions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
@@ -67,6 +68,10 @@ class DsfController extends Controller
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
             ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+            ->leftJoin('messages', function($join) {
+                $join->on('messages.message_reciever', '=', 'students.LRN')
+                     ->orOn('messages.message_sender', '=', 'students.LRN');
+            })
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -89,7 +94,11 @@ class DsfController extends Controller
                 'payments.date_of_payment',
                 'payments.description',
                 'tuitions_and_fees.tuition',
-                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance') 
+                'messages.message_reciever',
+                'messages.message_sender',
+                'messages.message_id',
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance'),
+                DB::raw('GROUP_CONCAT(messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
             )
             ->groupBy(
                 'students.LRN',
@@ -113,11 +122,72 @@ class DsfController extends Controller
                 'payments.date_of_payment',
                 'payments.description',
                 'tuitions_and_fees.tuition',
+                'messages.message_reciever',
+                'messages.message_sender',
+                'messages.message_id',
             )
             ->get();
         
         return response()->json($data, 200);
     }
+    
+    public function displaylist() {
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+            ->leftJoin('messages', function($join) {
+                $join->on('messages.message_reciever', '=', 'students.LRN')
+                     ->orOn('messages.message_sender', '=', 'students.LRN');
+            })
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                DB::raw('GROUP_CONCAT(DISTINCT payments.OR_number) AS OR_numbers'), // Unique OR numbers
+                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
+                DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
+                DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'tuitions_and_fees.tuition'
+            )
+            ->get();
+        
+        return response()->json($data, 200);
+    }
+    
+
     public function receiptdisplay(Request $request, $id) {
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
@@ -207,7 +277,7 @@ class DsfController extends Controller
                 'students.lname',
                 'students.fname',
                 'students.mname',
-                // 'students.suffix',
+                'students.suffix',
                 // 'students.gender',
                 // 'students.address',
                 // 'enrollments.grade_level',
@@ -231,7 +301,7 @@ class DsfController extends Controller
                 'students.lname',
                 'students.fname',
                 'students.mname',
-                // 'students.suffix',
+                'students.suffix',
                 // 'students.gender',
                 // 'students.address',
                 // 'enrollments.grade_level',
@@ -259,115 +329,17 @@ class DsfController extends Controller
         return response()->json(tuitions_and_fees::orderBy('grade_level','asc')->get(),200);
     }
 
-    // public function displaySOA(Request $request, $id) {
-    //     // Fetch student data and associated financial details
-    //     $studentData = DB::table('students')
-    //         ->join('enrollments', 'enrollments.LRN', '=', 'students.LRN')
-    //         ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
-    //         ->leftJoin('payments', 'payments.LRN', '=', 'students.LRN') // Join payments here
-    //         ->select(
-    //             'students.LRN',
-    //             'students.lname',
-    //             'students.fname',
-    //             'students.mname',
-    //             'students.suffix',
-    //             'students.gender',
-    //             'students.address',
-    //             'enrollments.grade_level',
-    //             'enrollments.contact_no',
-    //             'enrollments.date_register',
-    //             'enrollments.guardian_name',
-    //             'enrollments.public_private',
-    //             'enrollments.school_year',
-    //             'enrollments.regapproval_date',
-    //             'enrollments.payment_approval',
-    //             'tuitions_and_fees.tuition',
-    //             DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
-    //             DB::raw('SUM(tuitions_and_fees.tuition) - SUM(payments.amount_paid) as total')
-
-    //         )
-    //         ->where('students.LRN', $id)
-    //         ->groupBy(
-    //             'students.LRN',
-    //             'students.lname',
-    //             'students.fname',
-    //             'students.mname',
-    //             'students.suffix',
-    //             'students.gender',
-    //             'students.address',
-    //             'enrollments.grade_level',
-    //             'enrollments.contact_no',
-    //             'enrollments.date_register',
-    //             'enrollments.guardian_name',
-    //             'enrollments.public_private',
-    //             'enrollments.school_year',
-    //             'enrollments.regapproval_date',
-    //             'enrollments.payment_approval',
-    //             'tuitions_and_fees.tuition'
-    //         )
-    //         ->first(); // Use first() to get a single record
-    
-    //     if ($studentData) {
-    //         // Fetch detailed payments for the student
-    //         $payments = DB::table('payments')
-    //             ->join('enrollments', 'payments.LRN', '=', 'enrollments.LRN')
-    //             ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
-    //             ->where('payments.LRN', $id)
-    //             ->select(
-    //                 'payments.amount_paid',
-    //                 'payments.description',
-    //                 'payments.OR_number',
-    //                 'payments.date_of_payment',
-    //                 // 'tuitions_and_fees.tuition',
-    //                 DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
-    //                 DB::raw('COALESCE(SUM(tuitions_and_fees.tuition), 0) AS total_tuition'),
-    //                 DB::raw('(COALESCE(SUM(tuitions_and_fees.tuition), 0) - COALESCE(SUM(payments.amount_paid), 0)) AS tal'),
-    //                 DB::raw('(COALESCE(SUM(tuitions_and_fees.tuition), 0) - (COALESCE(SUM(tuitions_and_fees.tuition), 0) - COALESCE(SUM(payments.amount_paid), 0))) AS final')                    
-    //             )
-    //             ->groupBy(
-    //                 'payments.amount_paid',
-    //                 'payments.description',
-    //                 'payments.OR_number',
-    //                 'payments.date_of_payment',
-    //                 // 'tuitions_and_fees.tuition',
-    //             )
-    //             ->get();
-
-    //         // Calculate total of "tal"
-    //         // $totalTal = $payments->sum('tal');
-    
-    //         // Calculate total charges (tuition fees)
-    //         $tuition = $studentData->tuition ?? 0;
-    
-    //         // Calculate total payments (already calculated in studentData)
-    //         $totalPaid = $studentData->total_paid;
-    
-    //         // Calculate remaining balance
-    //         $remainingBalance = $tuition - $totalPaid;
-    
-    //         // Prepare the response data
-    //         $response = [
-    //             'student_info' => $studentData,
-    //             'charges' => [
-    //                 'description' => 'Tuition Fees',
-    //                 'amount' => $tuition,
-    //             ],
-    //             'payments' => $payments,
-    //             'total_paid' => $totalPaid,
-    //             'remaining_balance' => $remainingBalance,
-    //         ];
-    
-    //         return response()->json($response, 200);
-    //     } else {
-    //         return response()->json(['message' => 'Student not found'], 404);
-    //     }
-    // }
+ 
     public function displaySOA(Request $request, $id) {
         $payments = DB::table('payments')
                 ->join('enrollments', 'payments.LRN', '=', 'enrollments.LRN')
+                ->join('students', 'payments.LRN', '=', 'students.LRN')
                 ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
                 ->where('payments.LRN', $id)
                 ->select(
+                    'students.lname',
+                    'students.fname',
+                    'students.mname',
                     'payments.amount_paid',
                     'payments.description',
                     'payments.OR_number',
@@ -377,6 +349,9 @@ class DsfController extends Controller
                     DB::raw('COALESCE(SUM(tuitions_and_fees.tuition), 0) AS total_tuition')
                 )
                 ->groupBy(
+                    'students.lname',
+                    'students.fname',
+                    'students.mname',
                     'payments.amount_paid',
                     'payments.description',
                     'payments.OR_number',
@@ -400,6 +375,7 @@ class DsfController extends Controller
 
                 // Add to payment details with the current balance
                 $paymentDetails[] = [
+                    'name' => "{$payment->lname} {$payment->fname} {$payment->mname}",
                     'tuition' => $payment->tuition,
                     'OR_number' => $payment->OR_number,
                     'description' => $payment->description,
@@ -453,20 +429,24 @@ class DsfController extends Controller
         ], 200);
     }      
 
-    //for msg section....
-    public function sendMessage(Request $request)
-        {
-            $message = new Message();
-            $message->text = $request->input('text');
-            $message->sender = $request->input('sender');
-            $message->receiver = $request->input('receiver');
-            $message->save();
-            return response()->json(['message' => 'Message sent successfully']);
-        }
 
-        public function getMessages()
-        {
-            $messages = Message::all();
-            return response()->json($messages);
-        }
+
+    //for msg section....
+    public function getMessages(){
+    $messages = Message::with(['sender', 'receiverGuardian', 'receiverStudent'])
+        ->join('students', 'messages.message_sender', '=', 'students.LRN')
+        ->join('parent_guardians', 'messages.message_reciever', '=', 'parent_guardians.guardian_id')
+        ->select(
+            'messages.*', 
+            'students.fname as sender_fname',
+            'students.lname as sender_lname',
+            'parent_guardians.fname as receiver_fname',
+            'parent_guardians.lname as receiver_lname'
+        )
+        ->orderBy('messages.created_at', 'desc')
+        ->get();
+    
+    return response()->json($messages);
+}
+
 }
