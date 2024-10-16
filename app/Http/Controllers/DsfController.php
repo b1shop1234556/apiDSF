@@ -432,21 +432,187 @@ class DsfController extends Controller
 
 
     //for msg section....
-    public function getMessages(){
-    $messages = Message::with(['sender', 'receiverGuardian', 'receiverStudent'])
-        ->join('students', 'messages.message_sender', '=', 'students.LRN')
-        ->join('parent_guardians', 'messages.message_reciever', '=', 'parent_guardians.guardian_id')
-        ->select(
-            'messages.*', 
-            'students.fname as sender_fname',
-            'students.lname as sender_lname',
-            'parent_guardians.fname as receiver_fname',
-            'parent_guardians.lname as receiver_lname'
-        )
-        ->orderBy('messages.created_at', 'desc')
-        ->get();
+
+    public function displaymsg() {
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+            ->leftJoin('messages', function($join) {
+                $join->on('messages.message_reciever', '=', 'students.LRN')
+                     ->orOn('messages.message_sender', '=', 'students.LRN');
+            })
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                DB::raw('GROUP_CONCAT(DISTINCT payments.OR_number) AS OR_numbers'), // Unique OR numbers
+                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
+                DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
+                DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'tuitions_and_fees.tuition'
+            )
+            ->get();
+        
+        return response()->json($data, 200);
+    }
+
+    public function getMessages() {
+        // Retrieve messages sent from students to admins
+        $messages = messages::leftJoin('students as sender', 'messages.message_sender', '=', 'sender.LRN')
+            ->leftJoin('admins as receiver', 'messages.message_reciever', '=', 'receiver.id')
+            ->select(
+                'messages.*', 
+                'sender.fname as sender_fname',
+                'sender.lname as sender_lname',
+                'receiver.fname as receiver_fname',
+                'receiver.lname as receiver_lname'
+            )
+            ->orderBy('messages.created_at', 'asc') // Order messages by created_at in ascending order
+            ->get();
     
-    return response()->json($messages);
-}
+        // Check if messages were found
+        if ($messages->isEmpty()) {
+            return response()->json(['message' => 'No messages found'], 404);
+        }
+    
+        // Group messages by conversation (sender and receiver)
+        $conversations = [];
+        
+        foreach ($messages as $message) {
+            // Create a unique key for each conversation based on sender and receiver IDs
+            $conversationKey = $message->message_sender . '-' . $message->message_reciever;
+    
+            // Initialize conversation if not already set
+            if (!isset($conversations[$conversationKey])) {
+                $conversations[$conversationKey] = [
+                    'sender' => [ // Identifying the sender
+                        'fname' => $message->sender_fname,
+                        'lname' => $message->sender_lname,
+                    ],
+                    'receiver' => [ // Identifying the receiver
+                        'fname' => $message->receiver_fname,
+                        'lname' => $message->receiver_lname,
+                    ],
+                    'messages' => [] // Placeholder for messages
+                ];
+            }
+    
+            // Add message to the conversation
+            $conversations[$conversationKey]['messages'][] = [
+                'message_id' => $message->message_id,
+                'message' => $message->message,
+                'message_date' => $message->message_date,
+                'created_at' => $message->created_at,
+            ];
+        }
+    
+        // Return conversations as a JSON response
+        return response()->json(array_values($conversations), 200);
+    }
+    
+
+    public function displayTWO() {
+        // Fetch enrollment data along with messages from both students and admins
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+            ->leftJoin('messages', function($join) {
+                $join->on('messages.message_reciever', '=', 'students.LRN')
+                     ->orOn('messages.message_sender', '=', 'students.LRN');
+            })
+            ->leftJoin('admins', function($join) {
+                $join->on('messages.message_sender', '=', 'admins.id')
+                     ->orOn('messages.message_reciever', '=', 'admins.id');
+            })
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                DB::raw('GROUP_CONCAT(DISTINCT payments.OR_number) AS OR_numbers'), // Unique OR numbers
+                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
+                DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
+                DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages'), // Concatenate messages
+                DB::raw('GROUP_CONCAT(DISTINCT CASE WHEN messages.message_sender IS NOT NULL THEN CONCAT(admins.fname, " ", admins.lname) END ORDER BY messages.message_date SEPARATOR " | ") AS admin_senders'), // Admin sender names
+                DB::raw('GROUP_CONCAT(DISTINCT CASE WHEN messages.message_reciever IS NOT NULL THEN CONCAT(admins.fname, " ", admins.lname) END ORDER BY messages.message_date SEPARATOR " | ") AS admin_recievers') // Admin receiver names
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'tuitions_and_fees.tuition'
+            )
+            ->get();
+        
+        // Check if data was found
+        if ($data->isEmpty()) {
+            return response()->json(['message' => 'No data found'], 404);
+        }
+    
+        // Return the combined data as a JSON response
+        return response()->json($data, 200);
+    }
+    
+    
 
 }

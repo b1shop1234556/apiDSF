@@ -35,6 +35,7 @@ Route::get('/displayStudent', [DsfController::class, 'displayStudent']);
 Route::put('/updatepayment/{id}', [DsfController::class, 'updatepayment']);
 
 //for msg
-Route::put('/getMessages', [DsfController::class, 'getMessages']);
-
+Route::get('/getMessages', [DsfController::class, 'getMessages']);
+Route::get('displaymsg', [DsfController::class, 'displaymsg']);
+Route::get('/displayTWO', [DsfController::class, 'displayTWO']);
 
