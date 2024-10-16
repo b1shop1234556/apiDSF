@@ -14,7 +14,7 @@ class messages extends Model
         'message_id',
         'message_sender', 
         'message_reciever', 
-        'messages',
+        'message',
         'message_date',
         'created_at',
         'updated_at',

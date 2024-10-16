@@ -38,4 +38,6 @@ Route::put('/updatepayment/{id}', [DsfController::class, 'updatepayment']);
 Route::get('/getMessages', [DsfController::class, 'getMessages']);
 Route::get('displaymsg', [DsfController::class, 'displaymsg']);
 Route::get('/displayTWO', [DsfController::class, 'displayTWO']);
+Route::post('/messages', [DsfController::class, 'send']);
+Route::get('/messages', [DsfController::class, 'index']);
 

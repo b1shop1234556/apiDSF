@@ -6,19 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
-        //
+        Schema::create('messages', function (Blueprint $table) {
+            $table->id();
+            $table->string('message_sender');   // Column for sender ID or name
+            $table->string('message_reciever'); // Column for receiver ID or name
+            $table->text('message');   
+            $table->timestamp('message_date')->useCurrent();          // Column for the message text
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
+
     public function down(): void
     {
-        //
+        Schema::dropIfExists('messages');
     }
 };

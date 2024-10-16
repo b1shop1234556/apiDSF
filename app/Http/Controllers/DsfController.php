@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 // use App\Http\Requests\StoredsfRequest;
 // use App\Http\Requests\UpdatedsfRequest;
 
@@ -68,10 +69,6 @@ class DsfController extends Controller
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
             ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
-            ->leftJoin('messages', function($join) {
-                $join->on('messages.message_reciever', '=', 'students.LRN')
-                     ->orOn('messages.message_sender', '=', 'students.LRN');
-            })
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -94,11 +91,7 @@ class DsfController extends Controller
                 'payments.date_of_payment',
                 'payments.description',
                 'tuitions_and_fees.tuition',
-                'messages.message_reciever',
-                'messages.message_sender',
-                'messages.message_id',
-                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance'),
-                DB::raw('GROUP_CONCAT(messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
+                DB::raw('tuitions_and_fees.tuition - payments.amount_paid AS remaining_balance')
             )
             ->groupBy(
                 'students.LRN',
@@ -121,10 +114,7 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuitions_and_fees.tuition',
-                'messages.message_reciever',
-                'messages.message_sender',
-                'messages.message_id',
+                'tuitions_and_fees.tuition'
             )
             ->get();
         
@@ -434,6 +424,22 @@ class DsfController extends Controller
     //for msg section....
 
     public function displaymsg() {
+        // Assuming 'admin_id' is the identifier for admins in your messages table
+        $adminId = 'admin_id'; // Replace with the actual ID or condition for identifying admins
+    
+        // Get students who have sent messages to admins
+        $studentsWithMessages = DB::table('students')
+            ->join('messages', function($join) use ($adminId) {
+                $join->on('messages.message_sender', '=', 'students.LRN')
+                     ->where('messages.message_reciever', '=', $adminId);
+            })
+            ->select('students.LRN')
+            ->groupBy('students.LRN')
+            ->get()
+            ->pluck('LRN')
+            ->toArray();
+        
+        // Fetch data for those students
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
@@ -466,6 +472,7 @@ class DsfController extends Controller
                 DB::raw('tuitions_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
                 DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
             )
+            ->whereIn('students.LRN', $studentsWithMessages)
             ->groupBy(
                 'students.LRN',
                 'students.lname',
@@ -488,6 +495,7 @@ class DsfController extends Controller
         
         return response()->json($data, 200);
     }
+    
 
     public function getMessages() {
         // Retrieve messages sent from students to admins
@@ -502,45 +510,52 @@ class DsfController extends Controller
             )
             ->orderBy('messages.created_at', 'asc') // Order messages by created_at in ascending order
             ->get();
-    
+        
         // Check if messages were found
         if ($messages->isEmpty()) {
             return response()->json(['message' => 'No messages found'], 404);
         }
-    
-        // Group messages by conversation (sender and receiver)
-        $conversations = [];
+        
+        // Group messages by message ID
+        $messagesGrouped = [];
         
         foreach ($messages as $message) {
-            // Create a unique key for each conversation based on sender and receiver IDs
-            $conversationKey = $message->message_sender . '-' . $message->message_reciever;
-    
-            // Initialize conversation if not already set
-            if (!isset($conversations[$conversationKey])) {
-                $conversations[$conversationKey] = [
-                    'sender' => [ // Identifying the sender
-                        'fname' => $message->sender_fname,
-                        'lname' => $message->sender_lname,
-                    ],
-                    'receiver' => [ // Identifying the receiver
-                        'fname' => $message->receiver_fname,
-                        'lname' => $message->receiver_lname,
-                    ],
-                    'messages' => [] // Placeholder for messages
+            // Initialize message if not already set
+            if (!isset($messagesGrouped[$message->message_id])) {
+                $messagesGrouped[$message->message_id] = [
+                    'message_id' => $message->message_id,
+                    'message' => $message->message,
+                    'message_date' => $message->message_date,
+                    'created_at' => $message->created_at,
+                    'senders' => [],
+                    'receivers' => [],
                 ];
             }
-    
-            // Add message to the conversation
-            $conversations[$conversationKey]['messages'][] = [
-                'message_id' => $message->message_id,
-                'message' => $message->message,
-                'message_date' => $message->message_date,
-                'created_at' => $message->created_at,
-            ];
+        
+            // Add sender to the message
+            if ($message->message_sender == 100124) {
+                $messagesGrouped[$message->message_id]['senders'][] = [
+                    'fname' => $message->sender_fname,
+                    'lname' => $message->sender_lname,
+                ];
+                $messagesGrouped[$message->message_id]['receivers'][] = [
+                    'fname' => 'Dionece Mark',
+                    'lname' => 'Collano',
+                ];
+            } else {
+                $messagesGrouped[$message->message_id]['senders'][] = [
+                    'fname' => 'Dionece Mark',
+                    'lname' => 'Collano',
+                ];
+                $messagesGrouped[$message->message_id]['receivers'][] = [
+                    'fname' => $message->receiver_fname,
+                    'lname' => $message->receiver_lname,
+                ];
+            }
         }
-    
-        // Return conversations as a JSON response
-        return response()->json(array_values($conversations), 200);
+        
+        // Return messages as a JSON response
+        return response()->json(array_values($messagesGrouped), 200);
     }
     
 
@@ -613,6 +628,33 @@ class DsfController extends Controller
         return response()->json($data, 200);
     }
     
+
+    public function send(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'message_sender' => 'nullable|string',
+            'message_reciever' => 'nullable|string',
+            'message' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $message = Messages::create([
+            'message_sender' => $request->input('message_sender'), // Ensure the key matches your database column
+            'message_reciever' => $request->input('message_reciever'), // Ensure the key matches your database column
+            'message' => $request->input('message'), // Ensure the key matches your database column
+            'message_date' => now(),
+        ]);
+
+        return response()->json($message, 201);
+    }
+
+    public function index()
+    {
+        return response()->json(Messages::all(), 200);
+    }
     
 
 }
