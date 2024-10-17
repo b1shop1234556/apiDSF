@@ -420,6 +420,70 @@ class DsfController extends Controller
     }      
 
 
+    //Upload.......
+    public function uploadfiles(Request $request) {
+        // Validate the request
+        try {
+            $request->validate([
+                'financial_statements' => 'required|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'The financial statements field is required.',
+                'errors' => $e->validator->errors(),
+            ], 400);
+        }
+    
+        // Handle file upload
+        if ($request->hasFile('financial_statements')) {
+            $financial_statements = $request->file('financial_statements');
+            $filename = time() . '.' . $financial_statements->getClientOriginalExtension();
+            $financial_statements->move(public_path('uploads'), $filename);
+    
+            // Store file details in the database
+            DB::table('financial_statements')->insert([
+                'filename' => $filename,
+                'date_uploaded' => now(),
+                // Add other necessary fields if needed
+            ]);
+        } else {
+            return response()->json(['message' => 'No file uploaded.'], 400);
+        }
+    
+        // Retrieve data with joins and selections
+        $data = DB::table('financial_statements')
+            ->join('students', 'financial_statements.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'financial_statements.filename',
+                'financial_statements.date_uploaded',
+                'financial_statements.created_at',
+                'financial_statements.updated_at',
+                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'),
+                DB::raw('COALESCE(MAX(payments.date_of_payment), "No payments") AS latest_payment_date')
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'financial_statements.filename',
+                'financial_statements.date_uploaded',
+                'financial_statements.created_at',
+                'financial_statements.updated_at'
+            )
+            ->get();
+    
+        return response()->json($data, 200);
+    }
 
     //for msg section....
 
@@ -629,8 +693,7 @@ class DsfController extends Controller
     }
     
 
-    public function send(Request $request)
-    {
+    public function send(Request $request){
         $validator = Validator::make($request->all(), [
             'message_sender' => 'nullable|string',
             'message_reciever' => 'nullable|string',
@@ -651,8 +714,7 @@ class DsfController extends Controller
         return response()->json($message, 201);
     }
 
-    public function index()
-    {
+    public function index(){
         return response()->json(Messages::all(), 200);
     }
     

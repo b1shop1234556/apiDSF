@@ -11,7 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        //
+        Schema::create('financial_statements', function (Blueprint $table) {
+            $table->id('soa_id');                 // Primary key
+            $table->string('LRN');                 // Column for student LRN
+            $table->string('filename');            // Column for the file name
+            $table->timestamp('date_uploaded')->useCurrent(); // Column for the upload date
+            $table->timestamps();                  // Columns for created_at and updated_at
+        });
     }
 
     /**
@@ -19,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('financial_statements');
     }
 };
