@@ -482,7 +482,6 @@ class DsfController extends Controller
     }      
 
     //Upload.......
-
     public function uploadfiles(Request $request, $id)
     {
         // Validate the incoming request
