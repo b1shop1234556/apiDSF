@@ -9,11 +9,14 @@ use App\Models\enrollments;
 use App\Models\payments;
 use App\Models\messages;
 use App\Models\tuitions;
+use App\Models\financial_statements;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+
 // use App\Http\Requests\StoredsfRequest;
 // use App\Http\Requests\UpdatedsfRequest;
 
@@ -122,6 +125,62 @@ class DsfController extends Controller
     }
     
     public function displaylist() {
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
+            ->join('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
+            ->leftJoin('messages', function($join) {
+                $join->on('messages.message_reciever', '=', 'students.LRN')
+                     ->orOn('messages.message_sender', '=', 'students.LRN');
+            })
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                DB::raw('GROUP_CONCAT(DISTINCT payments.OR_number) AS OR_numbers'), // Unique OR numbers
+                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
+                DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
+                DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
+                'tuitions_and_fees.tuition',
+                DB::raw('tuitions_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
+            )
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'enrollments.grade_level',
+                'enrollments.contact_no',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'tuitions_and_fees.tuition'
+            )
+            ->get();
+        
+        return response()->json($data, 200);
+    }
+
+     public function displayIN() {
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
@@ -327,6 +386,7 @@ class DsfController extends Controller
                 ->leftJoin('tuitions_and_fees', 'enrollments.grade_level', '=', 'tuitions_and_fees.grade_level')
                 ->where('payments.LRN', $id)
                 ->select(
+                    'students.LRN',
                     'students.lname',
                     'students.fname',
                     'students.mname',
@@ -339,6 +399,7 @@ class DsfController extends Controller
                     DB::raw('COALESCE(SUM(tuitions_and_fees.tuition), 0) AS total_tuition')
                 )
                 ->groupBy(
+                    'students.LRN',
                     'students.lname',
                     'students.fname',
                     'students.mname',
@@ -365,6 +426,7 @@ class DsfController extends Controller
 
                 // Add to payment details with the current balance
                 $paymentDetails[] = [
+                    'LRN' => $payment->LRN,
                     'name' => "{$payment->lname} {$payment->fname} {$payment->mname}",
                     'tuition' => $payment->tuition,
                     'OR_number' => $payment->OR_number,
@@ -419,71 +481,76 @@ class DsfController extends Controller
         ], 200);
     }      
 
-
     //Upload.......
-    public function uploadfiles(Request $request) {
-        // Validate the request
-        try {
-            $request->validate([
-                'financial_statements' => 'required|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'The financial statements field is required.',
-                'errors' => $e->validator->errors(),
-            ], 400);
+
+    public function uploadfiles(Request $request, $id)
+    {
+        // Validate the incoming request
+        $request->validate([
+            'filename' => 'required|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:2048',
+        ]);
+
+        // Prepare the new image name
+        $extension = $request->filename->extension();
+        $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
+
+        $htdocsPath = 'C:/xampp/htdocs/SOA'; 
+        if (!file_exists($htdocsPath)) {
+            mkdir($htdocsPath, 0777, true);
         }
-    
-        // Handle file upload
-        if ($request->hasFile('financial_statements')) {
-            $financial_statements = $request->file('financial_statements');
-            $filename = time() . '.' . $financial_statements->getClientOriginalExtension();
-            $financial_statements->move(public_path('uploads'), $filename);
-    
-            // Store file details in the database
-            DB::table('financial_statements')->insert([
-                'filename' => $filename,
-                'date_uploaded' => now(),
-                // Add other necessary fields if needed
-            ]);
-        } else {
-            return response()->json(['message' => 'No file uploaded.'], 400);
+
+        // Handle the image upload
+        if ($request->hasFile('filename')) {
+            // Check if there is an old record to update
+            $admin = DB::table('financial_statements')->where('LRN', $id)->first();
+
+            // Delete the old image if it exists
+            if ($admin && $admin->filename) {
+                Storage::delete('public/profile_images/' . $admin->filename);
+
+                $htdocsImagePath = $htdocsPath . '/' . $admin->filename;
+                if (file_exists($htdocsImagePath)) {
+                    unlink($htdocsImagePath);
+                }
+            }
+
+            // Move the uploaded image to the target location
+            $request->filename->move($htdocsPath, $imageName);
+
+            // Insert or update the record in the financial_statements table
+            if ($admin) {
+                // Update the existing record
+                // DB::table('financial_statements')->where('LRN', $id)->update([
+                //     'filename' => $imageName,
+                //     'date_uploaded' => now(),
+                // ]);
+                DB::table('financial_statements')->insert([
+                    'LRN' => $id,
+                    'filename' => $imageName,
+                    'date_uploaded' => now(),
+                ]);
+            } else {
+                // Insert a new record if it doesn't exist
+                DB::table('financial_statements')->insert([
+                    'LRN' => $id,
+                    'filename' => $imageName,
+                    'date_uploaded' => now(),
+                ]);
+            }
         }
-    
-        // Retrieve data with joins and selections
-        $data = DB::table('financial_statements')
-            ->join('students', 'financial_statements.LRN', '=', 'students.LRN')
-            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
-            ->select(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'financial_statements.filename',
-                'financial_statements.date_uploaded',
-                'financial_statements.created_at',
-                'financial_statements.updated_at',
-                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'),
-                DB::raw('COALESCE(MAX(payments.date_of_payment), "No payments") AS latest_payment_date')
-            )
-            ->groupBy(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'financial_statements.filename',
-                'financial_statements.date_uploaded',
-                'financial_statements.created_at',
-                'financial_statements.updated_at'
-            )
-            ->get();
-    
-        return response()->json($data, 200);
+
+        return response()->json([
+            'message' => 'Profile image updated and record created successfully',
+            'image_url' => asset('profile_images/' . $imageName)
+        ], 200);
     }
+
+
+
+
+
+
+
 
     //for msg section....
 

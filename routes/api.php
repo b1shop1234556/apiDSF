@@ -34,8 +34,10 @@ Route::get('/displayStudent', [DsfController::class, 'displayStudent']);
 
 Route::put('/updatepayment/{id}', [DsfController::class, 'updatepayment']);
 
+Route::get('displayIN', [DsfController::class, 'displayIN']);
+
 //uploadIMG.....
-Route::post('/uploadfiles', [DsfController::class, 'uploadfiles']);
+Route::post('/uploadfiles/{id}', [DsfController::class, 'uploadfiles']);
 
 //for msg
 Route::get('/getMessages', [DsfController::class, 'getMessages']);

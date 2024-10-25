@@ -15,8 +15,6 @@ class financial_statements extends Model
         'soa_id',           
         'LRN',     
         'filename',  
-        'date_uploaded	',  
-        'created_at', 
-        'updated_at'
+        'date_uploaded'
     ];
 }
