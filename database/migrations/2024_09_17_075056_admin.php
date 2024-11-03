@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('mname');
             $table->string('role');
             $table->string('address');
+            $table->string('admin_pic');
             $table->string('email')->unique();
             // $table->timestamp('email_verified_at')->nullable();
             $table->string('password');

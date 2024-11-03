@@ -17,6 +17,7 @@ class dsf extends Model
         'fname',
         'lname',
         'mname',
+        'admin_pic',
         'role',
         'address',
         'email',

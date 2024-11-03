@@ -22,6 +22,9 @@ Route::post('/tuition', [TuitionsController::class, 'tuition']);
 Route::post('/register', [DsfController::class, 'register']);
 Route::post('/login', [DsfController::class, 'login']);
 Route::post('/logout', [DsfController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/findacc/{id}', [DsfController::class, 'findacc']);
+Route::put('/updateacc/{id}', [DsfController::class, 'updateacc']);
+Route::post('/profile-image/{id}', [DsfController::class, 'updateProfileImage']);
 
 Route::get('displaylist', [DsfController::class, 'displaylist']);
 Route::get('/display', [DsfController::class, 'display']);
