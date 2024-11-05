@@ -363,8 +363,9 @@ class DsfController extends Controller
                 'students.suffix',
                 'students.gender',
                 'students.address',
+                'students.contact_no',
                 'enrollments.grade_level',
-                'enrollments.contact_no',
+                // 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
                 'enrollments.public_private',
@@ -380,7 +381,7 @@ class DsfController extends Controller
                 DB::raw('tuition_and_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
-            ->update(['payment_approval' => now()]);
+            ->update(['payment_approval' => "Approve"]);
             // ->first(); // Use first() to get a single record
         
         if ($data) {
