@@ -76,8 +76,8 @@ class DsfController extends Controller
         }
         return response()->json($acc,200);
     }
-    public function updateacc(Request $request, $id)
-    {
+
+    public function updateacc(Request $request, $id){
         $acc = dsf::find($id);
 
         if(is_null($acc)){
@@ -94,8 +94,8 @@ class DsfController extends Controller
 
         return response()->json($acc,200);
     }
-    public function updateProfileImage(Request $request, $id)
-    {
+    
+    public function updateProfileImage(Request $request, $id){
         $request->validate([
             'admin_pic' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
