@@ -77,23 +77,52 @@ class DsfController extends Controller
         return response()->json($acc,200);
     }
 
-    public function updateacc(Request $request, $id){
+    public function updateacc(Request $request, $id)
+    {
+        // Retrieve the account (dsf) by ID
         $acc = dsf::find($id);
 
-        if(is_null($acc)){
+        // If the account does not exist, return a 404 error
+        if (is_null($acc)) {
             return response()->json(['message' => 'Account not found'], 404);
         }
 
-        $input = $request->all();
+        // Optionally, ensure the logged-in user owns the account (if applicable)
+        // if (auth()->user()->id !== $acc->user_id) {
+        //     return response()->json(['message' => 'Unauthorized action'], 403);
+        // }
 
-        if($request->filled('password')){
+        // Validate the input data
+        // $validated = $request->validate([
+        //     'fname' => 'nullable|string|max:255',
+        //     'mname' => 'nullable|string|max:255',
+        //     'lname' => 'nullable|string|max:255',
+        //     'email' => 'nullable|email|unique:dsfs,email,' . $id, // Ensure email uniqueness for the current user
+        //     'address' => 'nullable|string|max:255',
+        //     'password' => 'nullable|string|min:8|confirmed', // Only validate if the password is provided
+        // ]);
+
+        // Prepare the data for updating the account
+        $input = $request->all();
+        
+        // Check if a new password is provided and hash it if necessary
+        if ($request->filled('password')) {
             $input['password'] = bcrypt($request->password);
+            $input['currentPassword'] = $acc->password;
+        }else {
+            $input['password'] = $acc->password;
         }
 
+        // Update the account data
         $acc->update($input);
 
-        return response()->json($acc,200);
+        // Return a success response with the updated account data
+        return response()->json([
+            'message' => 'Account updated successfully',
+            'account' => $acc
+        ], 200);
     }
+
     
     public function updateProfileImage(Request $request, $id){
         $request->validate([
