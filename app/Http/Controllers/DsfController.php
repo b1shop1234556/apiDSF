@@ -77,8 +77,7 @@ class DsfController extends Controller
         return response()->json($acc,200);
     }
 
-    public function updateacc(Request $request, $id)
-    {
+    public function updateacc(Request $request, $id){
         // Retrieve the account (dsf) by ID
         $acc = dsf::find($id);
 
@@ -86,21 +85,6 @@ class DsfController extends Controller
         if (is_null($acc)) {
             return response()->json(['message' => 'Account not found'], 404);
         }
-
-        // Optionally, ensure the logged-in user owns the account (if applicable)
-        // if (auth()->user()->id !== $acc->user_id) {
-        //     return response()->json(['message' => 'Unauthorized action'], 403);
-        // }
-
-        // Validate the input data
-        // $validated = $request->validate([
-        //     'fname' => 'nullable|string|max:255',
-        //     'mname' => 'nullable|string|max:255',
-        //     'lname' => 'nullable|string|max:255',
-        //     'email' => 'nullable|email|unique:dsfs,email,' . $id, // Ensure email uniqueness for the current user
-        //     'address' => 'nullable|string|max:255',
-        //     'password' => 'nullable|string|min:8|confirmed', // Only validate if the password is provided
-        // ]);
 
         // Prepare the data for updating the account
         $input = $request->all();
