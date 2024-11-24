@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Admin;
+use App\Models\dsf;
 use App\Models\students;
 use App\Models\enrollments;
 use App\Models\payments;
@@ -24,6 +25,7 @@ class DsfController extends Controller
 {
     public function register(Request $request){
         $formField = $request->validate([
+            'admin_id' => 'required|string|max:255',
             'fname' => 'required|string|max:255',
             'lname' => 'required|string|max:255',
             'mname' => 'required|string|max:255',
@@ -35,12 +37,11 @@ class DsfController extends Controller
         ]);
 
         $formField['password'] = Hash::make($formField['password']);
-        dsf::create($formField);
+        Admin::create($formField);
         return $request;
     }
     
-    public function login(Request $request)
-    {
+    public function login(Request $request){
         $request->validate([
             "email"=>"required|email|exists:admins",
             "password"=>"required"
@@ -59,7 +60,6 @@ class DsfController extends Controller
             'token' => $token->plainTextToken,
             'admin_id'=> $admin->admin_id
         ];
-
 
     }
     
