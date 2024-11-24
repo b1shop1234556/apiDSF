@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('enrol_id'); // BIGINT UNSIGNED with auto increment
             $table->string('LRN', 255); // VARCHAR(255)
             $table->date('regapproval_date'); // DATE
-            $table->tinyInteger('payment_approval'); // TINYINT(1)
+            $table->date('payment_approval'); // TINYINT(1)
             $table->integer('grade_level'); // INT
             $table->string('contact_no', 15); // VARCHAR(15)
             $table->string('guardian_name', 100); // VARCHAR(100)

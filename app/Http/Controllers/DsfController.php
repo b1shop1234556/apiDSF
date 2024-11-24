@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\dsf;
+use App\Models\Admin;
 use App\Models\students;
 use App\Models\enrollments;
 use App\Models\payments;
@@ -38,38 +38,41 @@ class DsfController extends Controller
         dsf::create($formField);
         return $request;
     }
-    public function login(Request $request) {
-        $validated = $request->validate([
-            'email' => 'required|email|max:255',
-            'password' => 'required'
+    
+    public function login(Request $request)
+    {
+        $request->validate([
+            "email"=>"required|email|exists:admins",
+            "password"=>"required"
         ]);
-    
-        $user = dsf::where('email', $validated['email'])->first();
-    
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return response()->json([
-                'message' => 'The provided credentials are incorrect'
-            ], 401);
+        $admin = Admin::where('email',$request->email)->first();
+        if(!$admin|| !Hash::check($request->password,$admin->password)){
+            return [
+                "message"=>"The provider credentials are incorrect"
+            ];
         }
+        $token = $admin->createToken($admin->fname);
+        // $token = $admin->createToken($admin->fname)->plainTextToken; 
 
-        $token = $user->createToken($user->fname);
-    
-        return response()->json([
-            'user' => $user,
-            'token' => $token->plainTextToken
-        ], 200);
+        return [
+            'admin' => $admin,
+            'token' => $token->plainTextToken,
+            'admin_id'=> $admin->admin_id
+        ];
+
+
     }
     
-    public function logout(Request $request) {
+    public function logout(Request $request){
         $request->user()->tokens()->delete();
-    
-        return response()->json([
-            'message' => 'You are logged out'
-        ], 200);
+        return [
+            'message'=>'You are logged out'
+        ];
+        // return 'logout';
     }
 
     public function findacc($id){
-        $acc = dsf::find($id);
+        $acc = Admin::find($id);
 
         if(is_null($acc)){
             return response()->json(['message' => 'Account not found'], 404);
@@ -77,9 +80,9 @@ class DsfController extends Controller
         return response()->json($acc,200);
     }
 
-    public function updateacc(Request $request, $id){
+    public function updateacc(Request $request, $admin_id){
         // Retrieve the account (dsf) by ID
-        $acc = dsf::find($id);
+        $acc = Admin::find($admin_id);
 
         // If the account does not exist, return a 404 error
         if (is_null($acc)) {
@@ -113,7 +116,7 @@ class DsfController extends Controller
             'admin_pic' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
     
-        $admin = dsf::findOrFail($id);
+        $admin = Admin::findOrFail($id);
     
         if ($request->hasFile('admin_pic')) {
             if ($admin->admin_pic) {
@@ -153,7 +156,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -164,7 +167,6 @@ class DsfController extends Controller
                 'students.address',
                 'students.contact_no',
                 'enrollments.grade_level',
-                // 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
                 'enrollments.public_private',
@@ -176,9 +178,10 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuition_and_fees.tuition',
-                DB::raw('tuition_and_fees.tuition - payments.amount_paid AS remaining_balance')
+                'tuition_fees.tuition',
+                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance')
             )
+            ->whereNull('enrollments.payment_approval') // Filter for NULL payment approval
             ->groupBy(
                 'students.LRN',
                 'students.lname',
@@ -189,7 +192,6 @@ class DsfController extends Controller
                 'students.address',
                 'students.contact_no',
                 'enrollments.grade_level',
-                // 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
                 'enrollments.public_private',
@@ -201,7 +203,7 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuition_and_fees.tuition'
+                'tuition_fees.tuition'
             )
             ->get();
         
@@ -212,7 +214,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->leftJoin('messages', function($join) {
                 $join->on('messages.message_reciever', '=', 'students.LRN')
                      ->orOn('messages.message_sender', '=', 'students.LRN');
@@ -238,8 +240,8 @@ class DsfController extends Controller
                 DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
                 DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
                 DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
-                'tuition_and_fees.tuition',
-                DB::raw('tuition_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                'tuition_fees.tuition',
+                DB::raw('tuition_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
                 DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
             )
             ->groupBy(
@@ -259,7 +261,7 @@ class DsfController extends Controller
                 'enrollments.school_year',
                 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
-                'tuition_and_fees.tuition'
+                'tuition_fees.tuition'
             )
             ->get();
         
@@ -270,7 +272,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->leftJoin('messages', function($join) {
                 $join->on('messages.message_reciever', '=', 'students.LRN')
                      ->orOn('messages.message_sender', '=', 'students.LRN');
@@ -296,8 +298,8 @@ class DsfController extends Controller
                 DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
                 DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
                 DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
-                'tuition_and_fees.tuition',
-                DB::raw('tuition_and_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
+                'tuition_fees.tuition',
+                DB::raw('tuition_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
                 DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
             )
             ->groupBy(
@@ -317,7 +319,7 @@ class DsfController extends Controller
                 'enrollments.school_year',
                 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
-                'tuition_and_fees.tuition'
+                'tuition_fees.tuition'
             )
             ->get();
         
@@ -329,7 +331,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -350,8 +352,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuition_and_fees.tuition',
-                DB::raw('tuition_and_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                'tuition_fees.tuition',
+                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->first(); // Use first() to get a single record
@@ -367,7 +369,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -390,8 +392,8 @@ class DsfController extends Controller
                 'payments.proof_payment',
                 'payments.date_of_payment',
                 'payments.description',
-                'tuition_and_fees.tuition',
-                DB::raw('tuition_and_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                'tuition_fees.tuition',
+                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->update(['payment_approval' => "Approve"]);
@@ -409,7 +411,7 @@ class DsfController extends Controller
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
             ->select(
                 'students.LRN',
                 'students.lname',
@@ -431,8 +433,8 @@ class DsfController extends Controller
                 // 'payments.proof_payment',
                 // 'payments.date_of_payment',
                 // 'payments.description',
-                // 'tuition_and_fees.tuition',
-                // DB::raw('tuition_and_fees.tuition - payments.amount_paid AS remaining_balance') 
+                // 'tuition_fees.tuition',
+                // DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') 
             )
             ->groupBy(
                 'students.LRN',
@@ -455,7 +457,7 @@ class DsfController extends Controller
                 // 'payments.proof_payment',
                 // 'payments.date_of_payment',
                 // 'payments.description',
-                // 'tuition_and_fees.tuition',
+                // 'tuition_fees.tuition',
             )
             ->get();
         
@@ -464,7 +466,7 @@ class DsfController extends Controller
     }
 
     public function displaygrade(){
-        return response()->json(tuition_and_fees::orderBy('grade_level','asc')->get(),200);
+        return response()->json(tuition_fees::orderBy('grade_level','asc')->get(),200);
     }
 
  
@@ -472,7 +474,7 @@ class DsfController extends Controller
         $payments = DB::table('payments')
                 ->join('enrollments', 'payments.LRN', '=', 'enrollments.LRN')
                 ->join('students', 'payments.LRN', '=', 'students.LRN')
-                ->leftJoin('tuition_and_fees', 'enrollments.grade_level', '=', 'tuition_and_fees.grade_level')
+                ->leftJoin('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
                 ->where('payments.LRN', $id)
                 ->select(
                     'students.LRN',
@@ -483,9 +485,9 @@ class DsfController extends Controller
                     'payments.description',
                     'payments.OR_number',
                     'payments.date_of_payment',
-                    'tuition_and_fees.tuition',
+                    'tuition_fees.tuition',
                     DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
-                    DB::raw('COALESCE(SUM(tuition_and_fees.tuition), 0) AS total_tuition')
+                    DB::raw('COALESCE(SUM(tuition_fees.tuition), 0) AS total_tuition')
                 )
                 ->groupBy(
                     'students.LRN',
@@ -496,7 +498,7 @@ class DsfController extends Controller
                     'payments.description',
                     'payments.OR_number',
                     'payments.date_of_payment',
-                    'tuition_and_fees.tuition',
+                    'tuition_fees.tuition',
                 )
                 ->get();
 
@@ -869,6 +871,8 @@ class DsfController extends Controller
     public function index(){
         return response()->json(Messages::all(), 200);
     }
-    
 
+    
+    // ---------insert
+   
 }

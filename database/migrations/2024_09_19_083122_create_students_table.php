@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('gender', 255); 
             $table->string('religion', 255)->nullable(); 
             $table->text('address', 255); 
+            $table->text('contact_no', 255); 
+            $table->text('student_pic', 255); 
             $table->string('email', 255)->unique(); 
             $table->string('password', 255); 
             $table->timestamps(); 

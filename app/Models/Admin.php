@@ -7,11 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 
-class dsf extends Model
+class Admin extends Model
 {
     use HasFactory, Notifiable, HasApiTokens;
-    // protected $guard = 'admin';
-    // protected $table = 'admins';
     protected $primaryKey = "admin_id";
     protected $fillable = [  
         'admin_id',
@@ -36,5 +34,4 @@ class dsf extends Model
             'password' => 'hashed',
         ];
     }
-
 }

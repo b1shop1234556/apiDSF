@@ -9,10 +9,10 @@ class tuitions extends Model
 {
     use HasFactory;
 
-    protected $table = 'tuitions';
+    protected $table = 'tuiton_fees';
 
     protected $fillable = [
-        'year_level',           
+        'grade_leve',           
         'tuition',     
         'general',  
         'esc',  
