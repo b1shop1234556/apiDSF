@@ -70,6 +70,7 @@ class DsfController extends Controller
         // return 'logout';
     }
 
+    // editing personal account
     public function findacc($id){
         $acc = Admin::find($id);
 
@@ -687,7 +688,19 @@ class DsfController extends Controller
         
         return response()->json($data, 200);
     }
+
+    public function findTuitionFee($id)
+    {
+        $tuitionFee = tuitions::find($id);  
     
+        if (is_null($tuitionFee)) {
+            return response()->json(['message' => 'Tuition Fee not found'], 404);
+        }
+    
+        return response()->json($tuitionFee, 200);
+    }
+    
+
     
 
     //for msg section....
