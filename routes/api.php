@@ -51,3 +51,4 @@ Route::get('/messages', [DsfController::class, 'index']);
 
 //---insert---
 Route::post('/addtuitionfee', [DsfController::class, 'addtuitionfee']);
+Route::get('/tuitiondisplay', [DsfController::class, 'tuitiondisplay']);

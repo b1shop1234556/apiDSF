@@ -670,6 +670,25 @@ class DsfController extends Controller
         ], 201);
     }
     
+    public function tuitiondisplay() {
+        $data = DB::table('tuition_fees')
+            ->select(
+                'fee_id', 
+                'created_at', 
+                'updated_at', 
+                'grade_level', 
+                'tuition', 
+                'general', 
+                'esc', 
+                'subsidy', 
+                'req_Downpayment'
+            )
+            ->get();
+        
+        return response()->json($data, 200);
+    }
+    
+    
 
     //for msg section....
 
