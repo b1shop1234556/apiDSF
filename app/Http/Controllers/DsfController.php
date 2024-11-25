@@ -14,7 +14,7 @@ use App\Models\financial_statements;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB; 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -25,7 +25,6 @@ class DsfController extends Controller
 {
     public function register(Request $request){
         $formField = $request->validate([
-            'admin_id' => 'required|string|max:255',
             'fname' => 'required|string|max:255',
             'lname' => 'required|string|max:255',
             'mname' => 'required|string|max:255',
@@ -47,7 +46,7 @@ class DsfController extends Controller
             "password"=>"required"
         ]);
         $admin = Admin::where('email',$request->email)->first();
-        if(!$admin|| !Hash::check($request->password,$admin->password)){
+        if(!$admin || !Hash::check($request->password,$admin->password)){
             return [
                 "message"=>"The provider credentials are incorrect"
             ];
@@ -58,7 +57,7 @@ class DsfController extends Controller
         return [
             'admin' => $admin,
             'token' => $token->plainTextToken,
-            'admin_id'=> $admin->admin_id
+            // 'admin_id'=> $admin->admin_id
         ];
 
     }
@@ -366,6 +365,7 @@ class DsfController extends Controller
     }
 
     public function approveEnrollment(Request $request, $id){
+        // First, retrieve the enrollment data.
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
             ->join('payments', 'students.LRN', '=', 'payments.LRN')
@@ -393,19 +393,24 @@ class DsfController extends Controller
                 'payments.date_of_payment',
                 'payments.description',
                 'tuition_fees.tuition',
-                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
+                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') 
             )
-            ->where('students.LRN', $id) // Filter by student ID
-            ->update(['payment_approval' => "Approve"]);
-            // ->first(); // Use first() to get a single record
-        
-        if ($data) {
-            return response()->json($data, 200);
-        } else {
+            ->where('students.LRN', $id) 
+            ->first(); 
+    
+        if (!$data) {
             return response()->json(['message' => 'Student not found'], 404);
         }
-
+    
+        DB::table('enrollments')
+            ->where('LRN', $id)
+            ->update(['payment_approval' => now()]); 
+        
+        $data->payment_approval = now();
+    
+        return response()->json($data, 200); 
     }
+    
 
     public function displayStudent(){
         $data = DB::table('enrollments')
@@ -635,9 +640,36 @@ class DsfController extends Controller
     }
 
 
-
-
-
+    // insert tuition fee
+    public function addtuitionfee(Request $request){
+        $request->validate([
+            'grade_level' => 'required|integer',   // Change to integer validation
+            'tuition' => 'required|numeric',
+            'general' => 'required|numeric',
+            'esc' => 'required|numeric', // Enum validation
+            'subsidy' => 'required|numeric',
+            'req_Downpayment' => 'required|numeric',
+        ]);
+    
+        DB::table('tuition_fees')->insert([
+            'grade_level' => $request->grade_level,
+            'tuition' => $request->tuition,
+            'general' => $request->general,
+            'esc' => $request->esc,
+            'subsidy' => $request->subsidy,
+            'req_Downpayment' => $request->req_Downpayment,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    
+        $tuitionlist = DB::table('tuition_fees')->orderBy('created_at', 'desc')->get();
+    
+        return response()->json([
+            'message' => 'Success',
+            'data' => $tuitionlist,
+        ], 201);
+    }
+    
 
     //for msg section....
 
@@ -872,7 +904,6 @@ class DsfController extends Controller
         return response()->json(Messages::all(), 200);
     }
 
-    
-    // ---------insert
+
    
 }

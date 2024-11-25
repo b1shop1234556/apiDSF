@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tuitions', function (Blueprint $table) {
-            $table->id();
-            $table->string('year_level');
+        Schema::create('tuiton_fees', function (Blueprint $table) {
+            $table->id('fee_id');
+            $table->string('grade_level');
             $table->string('tuition');
             $table->string('general');
-            $table->string('esc');
+            $table->bigInteger('esc')->change();
             $table->string('subsidy');
             $table->string('req_Downpayment');
             $table->timestamps();
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('tuitions');
+        Schema::dropIfExists('tuiton_fees');
     }
 };

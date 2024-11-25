@@ -10,6 +10,8 @@ use Illuminate\Notifications\Notifiable;
 class Admin extends Model
 {
     use HasFactory, Notifiable, HasApiTokens;
+    protected $guard = 'admin';
+    protected $table = 'admins';
     protected $primaryKey = "admin_id";
     protected $fillable = [  
         'admin_id',
