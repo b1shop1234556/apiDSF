@@ -17,7 +17,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\DB; 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-
+use Illuminate\Support\Facades\Log;  // Import the Log facade
 // use App\Http\Requests\StoredsfRequest;
 // use App\Http\Requests\UpdatedsfRequest;
 
@@ -152,62 +152,89 @@ class DsfController extends Controller
         return response()->json(['message' => 'No image file uploaded'], 400);
     }
 
+    
+
     public function display() {
-        $data = DB::table('enrollments')
-            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
-            ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
-            ->select(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'students.contact_no',
-                'enrollments.grade_level',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'enrollments.payment_approval',
-                'payments.OR_number',
-                'payments.amount_paid',
-                'payments.proof_payment',
-                'payments.date_of_payment',
-                'payments.description',
-                'tuition_fees.tuition',
-                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance')
-            )
-            ->whereNull('enrollments.payment_approval') // Filter for NULL payment approval
-            ->groupBy(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'students.contact_no',
-                'enrollments.grade_level',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'enrollments.payment_approval',
-                'payments.OR_number',
-                'payments.amount_paid',
-                'payments.proof_payment',
-                'payments.date_of_payment',
-                'payments.description',
-                'tuition_fees.tuition'
-            )
-            ->get();
-        
-        return response()->json($data, 200);
+        try {
+            Log::info('Fetching enrollment data started.');
+    
+            // Enable query log to track the SQL being run
+            DB::enableQueryLog();
+    
+            // Execute the query to fetch data
+            $data = DB::table('enrollments')
+                ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
+                ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
+                ->leftJoin('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+                ->select(
+                    'students.LRN',
+                    'students.lname',
+                    'students.fname',
+                    'students.mname',
+                    'students.suffix',
+                    'students.gender',
+                    'students.address',
+                    'students.contact_no',
+                    'enrollments.grade_level',
+                    'enrollments.date_register',
+                    'enrollments.guardian_name',
+                    'enrollments.public_private',
+                    'enrollments.school_year',
+                    'enrollments.regapproval_date',
+                    'enrollments.payment_approval',
+                    'payments.OR_number',
+                    'payments.amount_paid',
+                    'payments.proof_payment',
+                    'payments.date_of_payment',
+                    'payments.description',
+                    'tuition_fees.tuition',
+                    DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance')
+                )
+                // Removed the filter to fetch all records
+                ->groupBy(
+                    'students.LRN',
+                    'students.lname',
+                    'students.fname',
+                    'students.mname',
+                    'students.suffix',
+                    'students.gender',
+                    'students.address',
+                    'students.contact_no',
+                    'enrollments.grade_level',
+                    'enrollments.date_register',
+                    'enrollments.guardian_name',
+                    'enrollments.public_private',
+                    'enrollments.school_year',
+                    'enrollments.regapproval_date',
+                    'enrollments.payment_approval',
+                    'payments.OR_number',
+                    'payments.amount_paid',
+                    'payments.proof_payment',
+                    'payments.date_of_payment',
+                    'payments.description',
+                    'tuition_fees.tuition'
+                )
+                ->get();
+    
+            // Log the executed SQL query
+            Log::info('SQL Query Executed: ' . json_encode(DB::getQueryLog()));
+    
+            // Check if data is empty and log accordingly
+            if ($data->isEmpty()) {
+                Log::warning('No data found for the provided filter.');
+            } else {
+                Log::info('Fetching enrollment data completed successfully.');
+            }
+    
+            return response()->json($data, 200);
+    
+        } catch (\Exception $e) {
+            // Log the exception error
+            Log::error('Error fetching enrollment data: ' . $e->getMessage());
+            
+            // Return a JSON response with the error message
+            return response()->json(['error' => 'An error occurred while fetching data.'], 500);
+        }
     }
     
     public function displaylist() {
@@ -648,7 +675,7 @@ class DsfController extends Controller
             'tuition' => 'required|numeric',
             'general' => 'required|numeric',
             'esc' => 'required|numeric', // Enum validation
-            'subsidy' => 'required|numeric',
+            'subsidy' => 'nullable|numeric',
             'req_Downpayment' => 'required|numeric',
         ]);
     
@@ -689,8 +716,7 @@ class DsfController extends Controller
         return response()->json($data, 200);
     }
 
-    public function findTuitionFee($id)
-    {
+    public function findTuitionFee($id){
         $tuitionFee = tuitions::find($id);  
     
         if (is_null($tuitionFee)) {
