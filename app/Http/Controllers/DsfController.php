@@ -152,6 +152,45 @@ class DsfController extends Controller
         return response()->json(['message' => 'No image file uploaded'], 400);
     }
 
+    // public function updateProfileImage(Request $request, $id){
+    //     $request->validate([
+    //         'admin_pic' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+    //     ]);
+
+    //     $admin = Admin::findOrFail($id);
+
+    //     if ($request->hasFile('admin_pic')) {
+    //         // Delete the old image if it exists
+    //         if ($admin->admin_pic) {
+    //             $oldImagePath = public_path('profile_images/' . $admin->admin_pic);
+    //             if (file_exists($oldImagePath)) {
+    //                 unlink($oldImagePath);
+    //             }
+    //         }
+
+    //         // Get the file extension and generate a unique name for the image
+    //         $extension = $request->file('admin_pic')->extension();
+    //         $imageName = time() . '_' . $admin->Admin_ID . '.' . $extension;
+
+    //         // Move the file to the 'public/profile_images' directory
+    //         $destinationPath = public_path('profile_images');
+    //         $request->file('admin_pic')->move($destinationPath, $imageName);
+
+    //         // Update the database with the new image name
+    //         $admin->admin_pic = $imageName;
+    //         $admin->save();
+
+    //         // Generate the public URL for the new image
+    //         $imageUrl = asset('profile_images/' . $imageName);
+
+    //         return response()->json([
+    //             'message' => 'Profile image updated successfully',
+    //             'image_url' => $imageUrl
+    //         ], 200);
+    //     }
+
+    //     return response()->json(['message' => 'No image file uploaded'], 400);
+    // }
     
 
     public function display() {
@@ -667,8 +706,7 @@ class DsfController extends Controller
         ], 200);
     }
 
-
-    // insert tuition fee
+    // for tuition fee
     public function addtuitionfee(Request $request){
         $request->validate([
             'grade_level' => 'required|integer',   // Change to integer validation
@@ -716,16 +754,68 @@ class DsfController extends Controller
         return response()->json($data, 200);
     }
 
-    public function findTuitionFee($id){
-        $tuitionFee = tuitions::find($id);  
+    public function findfees(Request $request, $id) {
+        // Fetch the tuition fees based on the grade level
+        $data = DB::table('tuition_fees')
+            ->select(
+                'tuition_fees.grade_level',
+                'tuition_fees.tuition',
+                'tuition_fees.general',
+                'tuition_fees.esc',
+                'tuition_fees.subsidy',
+                'tuition_fees.req_Downpayment',
+                'tuition_fees.created_at',
+                'tuition_fees.updated_at'
+            )
+            ->where('tuition_fees.fee_id', $id) // Filter by grade level
+            ->first(); // Use first() to get a single record
     
-        if (is_null($tuitionFee)) {
-            return response()->json(['message' => 'Tuition Fee not found'], 404);
+        // Return the data or error if not found
+        if ($data) {
+            return response()->json($data, 200);
+        } else {
+            return response()->json(['message' => 'Tuition fees for this grade level not found'], 404);
         }
-    
-        return response()->json($tuitionFee, 200);
     }
     
+    public function updateTuitionFee(Request $request, $id) {
+        // Validate the incoming request data
+        $request->validate([
+            'grade_level' => 'required|string',
+            'tuition' => 'required|numeric',
+            'general' => 'required|numeric',
+            'esc' => 'nullable|numeric', // esc is nullable
+            'subsidy' => 'nullable|numeric', // subsidy is nullable
+            'req_Downpayment' => 'required|numeric',
+        ]);
+        
+        // Find the tuition fee record by fee_id (primary key)
+        $tuitionFee = DB::table('tuition_fees')->where('fee_id', $id)->first();
+    
+        if (!$tuitionFee) {
+            return response()->json(['message' => 'Tuition fee not found'], 404);
+        }
+    
+        // Update the tuition fee record with the new values
+        DB::table('tuition_fees')->where('fee_id', $id)->update([
+            'grade_level' => $request->grade_level,
+            'tuition' => $request->tuition,
+            'general' => $request->general,
+            'esc' => $request->esc, // It can be null
+            'subsidy' => $request->subsidy, // It can be null
+            'req_Downpayment' => $request->req_Downpayment,
+            'updated_at' => now(),
+        ]);
+    
+        // Retrieve the updated tuition fee records
+        $tuitionFees = DB::table('tuition_fees')->orderBy('created_at', 'desc')->get();
+    
+        // Return the response with the updated tuition fees
+        return response()->json([
+            'message' => 'Tuition fee updated successfully',
+            'data' => $tuitionFees,
+        ], 200);
+    }    
 
     
 

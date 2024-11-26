@@ -52,4 +52,5 @@ Route::get('/messages', [DsfController::class, 'index']);
 //---insert---
 Route::post('/addtuitionfee', [DsfController::class, 'addtuitionfee']);
 Route::get('/tuitiondisplay', [DsfController::class, 'tuitiondisplay']);
-Route::get('/findTuitionFee/{id}', [DsfController::class, 'findTuitionFee']);
+Route::get('/updateTuitionFee/{id}', [DsfController::class, 'updateTuitionFee']);
+Route::get('/findfees/{id}', [DsfController::class, 'findfees']);
