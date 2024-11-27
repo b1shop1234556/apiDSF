@@ -334,63 +334,63 @@ class DsfController extends Controller
         return response()->json($data, 200);
     }
 
-     public function displayIN() {
+    public function displayIN() {
         $data = DB::table('enrollments')
-            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
-            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN') // Left join to include students without payments
-            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
-            ->leftJoin('messages', function($join) {
-                $join->on('messages.message_reciever', '=', 'students.LRN')
-                     ->orOn('messages.message_sender', '=', 'students.LRN');
-            })
-            ->select(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'students.contact_no',
-                'enrollments.grade_level',
-                // 'enrollments.contact_no',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'enrollments.payment_approval',
-                DB::raw('GROUP_CONCAT(DISTINCT payments.OR_number) AS OR_numbers'), // Unique OR numbers
-                DB::raw('SUM(payments.amount_paid) AS total_amount_paid'), // Total payment amount
-                DB::raw('MAX(payments.date_of_payment) AS latest_payment_date'), // Latest payment date
-                DB::raw('GROUP_CONCAT(payments.description ORDER BY payments.date_of_payment SEPARATOR " | ") AS payment_descriptions'), // Concatenate descriptions
-                'tuition_fees.tuition',
-                DB::raw('tuition_fees.tuition - COALESCE(SUM(payments.amount_paid), 0) AS remaining_balance'), // Remaining balance
-                DB::raw('GROUP_CONCAT(DISTINCT messages.message ORDER BY messages.message_date SEPARATOR " | ") AS messages') // Concatenate messages
-            )
-            ->groupBy(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'students.contact_no',
-                'enrollments.grade_level',
-                // 'enrollments.contact_no',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'enrollments.payment_approval',
-                'tuition_fees.tuition'
-            )
-            ->get();
-        
-        return response()->json($data, 200);
-    }
+        ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+        ->join('payments', 'students.LRN', '=', 'payments.LRN')
+        ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+        ->select(
+            'students.LRN',
+            'students.lname',
+            'students.fname',
+            'students.mname',
+            'students.suffix',
+            'students.gender',
+            'students.address',
+            'enrollments.grade_level',
+            'students.contact_no',
+            // 'enrollments.date_register',
+            // 'enrollments.guardian_name',
+            // 'enrollments.public_private',
+            // 'enrollments.school_year',
+            // 'enrollments.regapproval_date',
+            'enrollments.payment_approval',
+            // 'payments.OR_number',
+            // 'payments.amount_paid',
+            // 'payments.proof_payment',
+            // 'payments.date_of_payment',
+            // 'payments.description',
+            // 'tuition_fees.tuition',
+            // DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') 
+        )
+        ->groupBy(
+            'students.LRN',
+            'students.lname',
+            'students.fname',
+            'students.mname',
+            'students.suffix',
+            'students.gender',
+            'students.address',
+            'enrollments.grade_level',
+            'students.contact_no',
+            // 'enrollments.date_register',
+            // 'enrollments.guardian_name',
+            // 'enrollments.public_private',
+            // 'enrollments.school_year',
+            // 'enrollments.regapproval_date',
+            'enrollments.payment_approval',
+            // 'payments.OR_number',
+            // 'payments.amount_paid',
+            // 'payments.proof_payment',
+            // 'payments.date_of_payment',
+            // 'payments.description',
+            // 'tuition_fees.tuition',
+        )
+        ->get();
+    
+    return response()->json($data, 200);
+    return response()->json(students::all(), 200);
+}
     
 
     public function receiptdisplay(Request $request, $id) {
