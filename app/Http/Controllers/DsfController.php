@@ -779,9 +779,15 @@ class DsfController extends Controller
     }
     
     public function updateTuitionFee(Request $request, $id) {
+        // Log the incoming ID
+        Log::info('Received fee_id in backend:', ['fee_id' => $id]);
+    
+        // Log the incoming request data
+        Log::info('Received data in backend:', ['request_data' => $request->all()]);
+        
         // Validate the incoming request data
-        $request->validate([
-            'grade_level' => 'required|string',
+        $validatedData = $request->validate([
+            'grade_level' => 'required|integer',
             'tuition' => 'required|numeric',
             'general' => 'required|numeric',
             'esc' => 'nullable|numeric', // esc is nullable
@@ -789,13 +795,25 @@ class DsfController extends Controller
             'req_Downpayment' => 'required|numeric',
         ]);
         
+        // Log validation success
+        Log::info('Request data validated successfully', ['validated_data' => $validatedData]);
+    
         // Find the tuition fee record by fee_id (primary key)
         $tuitionFee = DB::table('tuition_fees')->where('fee_id', $id)->first();
-    
         if (!$tuitionFee) {
+            Log::warning('Tuition fee not found for ID: ' . $id);  // Log if tuition fee is not found
             return response()->json(['message' => 'Tuition fee not found'], 404);
         }
     
+        // Log the current tuition fee record before updating
+        Log::info('Current tuition fee record before update:', ['current_record' => $tuitionFee]);
+    
+        // Log before updating the record
+        Log::info('Updating tuition fee record with new values', [
+            'fee_id' => $id,
+            'new_data' => $request->all()
+        ]);
+        
         // Update the tuition fee record with the new values
         DB::table('tuition_fees')->where('fee_id', $id)->update([
             'grade_level' => $request->grade_level,
@@ -807,15 +825,24 @@ class DsfController extends Controller
             'updated_at' => now(),
         ]);
     
+        // Log after updating
+        Log::info('Tuition fee record updated successfully for ID: ' . $id);
+    
         // Retrieve the updated tuition fee records
         $tuitionFees = DB::table('tuition_fees')->orderBy('created_at', 'desc')->get();
+    
+        // Log the retrieved records
+        Log::info('Retrieved updated tuition fees', ['tuition_fees' => $tuitionFees]);
     
         // Return the response with the updated tuition fees
         return response()->json([
             'message' => 'Tuition fee updated successfully',
             'data' => $tuitionFees,
         ], 200);
-    }    
+    }
+    
+    
+    
 
     
 
