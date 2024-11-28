@@ -45,7 +45,9 @@ class DsfController extends Controller
             "email"=>"required|email|exists:admins",
             "password"=>"required"
         ]);
-        $admin = Admin::where('email',$request->email)->first();
+        $admin = Admin::where('email',$request->email)
+            ->Where('role', '=', 'DSF')
+            ->first();
         if(!$admin || !Hash::check($request->password,$admin->password)){
             return [
                 "message"=>"The provider credentials are incorrect"
