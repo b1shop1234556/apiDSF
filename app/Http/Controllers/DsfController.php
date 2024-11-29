@@ -198,10 +198,10 @@ class DsfController extends Controller
     public function display() {
         try {
             Log::info('Fetching enrollment data started.');
-    
+        
             // Enable query log to track the SQL being run
             DB::enableQueryLog();
-    
+        
             // Execute the query to fetch data
             $data = DB::table('enrollments')
                 ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
@@ -229,46 +229,25 @@ class DsfController extends Controller
                     'payments.date_of_payment',
                     'payments.description',
                     'tuition_fees.tuition',
-                    DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance')
-                )
-                // Removed the filter to fetch all records
-                ->groupBy(
-                    'students.LRN',
-                    'students.lname',
-                    'students.fname',
-                    'students.mname',
-                    'students.suffix',
-                    'students.gender',
-                    'students.address',
-                    'students.contact_no',
-                    'enrollments.grade_level',
-                    'enrollments.date_register',
-                    'enrollments.guardian_name',
-                    'enrollments.public_private',
-                    'enrollments.school_year',
-                    'enrollments.regapproval_date',
-                    'enrollments.payment_approval',
-                    'payments.OR_number',
-                    'payments.amount_paid',
-                    'payments.proof_payment',
-                    'payments.date_of_payment',
-                    'payments.description',
-                    'tuition_fees.tuition'
+                    'tuition_fees.general',
+                    'tuition_fees.esc',
+                    'tuition_fees.subsidy',
+                    DB::raw('COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - COALESCE(payments.amount_paid, 0) AS remaining_balance')
                 )
                 ->get();
-    
+        
             // Log the executed SQL query
             Log::info('SQL Query Executed: ' . json_encode(DB::getQueryLog()));
-    
+        
             // Check if data is empty and log accordingly
             if ($data->isEmpty()) {
                 Log::warning('No data found for the provided filter.');
             } else {
                 Log::info('Fetching enrollment data completed successfully.');
             }
-    
+        
             return response()->json($data, 200);
-    
+        
         } catch (\Exception $e) {
             // Log the exception error
             Log::error('Error fetching enrollment data: ' . $e->getMessage());
@@ -277,6 +256,7 @@ class DsfController extends Controller
             return response()->json(['error' => 'An error occurred while fetching data.'], 500);
         }
     }
+    
     
     public function displaylist() {
         $data = DB::table('enrollments')
@@ -395,43 +375,55 @@ class DsfController extends Controller
 }
     
 
-    public function receiptdisplay(Request $request, $id) {
-        $data = DB::table('enrollments')
-            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
-            ->join('payments', 'students.LRN', '=', 'payments.LRN')
-            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
-            ->select(
-                'students.LRN',
-                'students.lname',
-                'students.fname',
-                'students.mname',
-                'students.suffix',
-                'students.gender',
-                'students.address',
-                'students.contact_no',
-                'enrollments.grade_level',
-                'enrollments.date_register',
-                'enrollments.guardian_name',
-                'enrollments.public_private',
-                'enrollments.school_year',
-                'enrollments.regapproval_date',
-                'payments.OR_number',
-                'payments.amount_paid',
-                'payments.proof_payment',
-                'payments.date_of_payment',
-                'payments.description',
-                'tuition_fees.tuition',
-                DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') // Calculate remaining balance
-            )
-            ->where('students.LRN', $id) // Filter by student ID
-            ->first(); // Use first() to get a single record
-        
-        if ($data) {
-            return response()->json($data, 200);
-        } else {
-            return response()->json(['message' => 'Student not found'], 404);
-        }
+public function receiptdisplay(Request $request, $id) {
+    // Query the database using a join and select statement
+    $data = DB::table('enrollments')
+        ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+        ->join('payments', 'students.LRN', '=', 'payments.LRN')
+        ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+        ->select(
+            'students.LRN',
+            'students.lname',
+            'students.fname',
+            'students.mname',
+            'students.suffix',
+            'students.gender',
+            'students.address',
+            'students.contact_no',
+            'enrollments.grade_level',
+            'enrollments.date_register',
+            'enrollments.guardian_name',
+            'enrollments.public_private',
+            'enrollments.school_year',
+            'enrollments.regapproval_date',
+            'payments.OR_number',
+            'payments.amount_paid',
+            'payments.proof_payment',
+            'payments.date_of_payment',
+            'payments.description',
+            'tuition_fees.tuition',
+            'tuition_fees.general',
+            'tuition_fees.esc',
+            'tuition_fees.subsidy',
+            // Ensure amount_paid is handled even if it's null
+            DB::raw('
+                COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + 
+                COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - 
+                COALESCE(payments.amount_paid, 0) AS remaining_balance
+            ') // Calculate remaining balance
+        )
+        ->where('students.LRN', $id) // Filter by student ID
+        ->first(); // Use first() to get a single record
+    
+    // Check if data exists and return the result
+    if ($data) {
+        return response()->json($data, 200);
+    } else {
+        // If no record is found for the given student ID
+        return response()->json(['message' => 'Student not found'], 404);
     }
+}
+
 
     public function approveEnrollment(Request $request, $id){
         // First, retrieve the enrollment data.
