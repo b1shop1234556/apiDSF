@@ -42,6 +42,10 @@ Route::get('displayIN', [DsfController::class, 'displayIN']);
 //uploadIMG.....
 Route::post('/uploadfiles/{id}', [DsfController::class, 'uploadfiles']);
 
+//view_financials
+// Route::get('/displayFinancials', [DsfController::class, 'displayFinancials']);
+Route::get('/displayFinancials/{id}', [DsfController::class, 'displayFinancials']);
+
 //for msg
 Route::get('/getMessages', [DsfController::class, 'getMessages']);
 Route::get('displaymsg', [DsfController::class, 'displaymsg']);

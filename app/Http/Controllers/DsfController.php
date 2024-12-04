@@ -234,6 +234,7 @@ class DsfController extends Controller
                     'tuition_fees.subsidy',
                     DB::raw('COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - COALESCE(payments.amount_paid, 0) AS remaining_balance')
                 )
+                ->distinct('students.LRN') // Make sure to only get distinct records based on LRN or any other unique identifier
                 ->get();
         
             // Log the executed SQL query
@@ -256,6 +257,7 @@ class DsfController extends Controller
             return response()->json(['error' => 'An error occurred while fetching data.'], 500);
         }
     }
+    
     
     
     public function displaylist() {
@@ -836,6 +838,59 @@ public function receiptdisplay(Request $request, $id) {
         ], 200);
     }
     
+    // view_financials
+   public function displayFinancials(Request $request, $id) {
+        // Query the database using a join and select statement
+        $data = DB::table('enrollments')
+            ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->join('payments', 'students.LRN', '=', 'payments.LRN')
+            ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+            ->leftJoin('financial_statements', 'students.LRN', '=', 'financial_statements.LRN') // Added the left join with financial_statements
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'students.contact_no',
+                'enrollments.grade_level',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuition_fees.tuition',
+                'tuition_fees.general',
+                'tuition_fees.esc',
+                'tuition_fees.subsidy',
+                // Ensure amount_paid is handled even if it's null
+                DB::raw('
+                    COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + 
+                    COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - 
+                    COALESCE(payments.amount_paid, 0) AS remaining_balance
+                '), // Calculate remaining balance
+                'financial_statements.soa_id', // Added financial_statements columns
+                'financial_statements.filename',
+                'financial_statements.date_uploaded'
+            )
+            ->where('students.LRN', $id) // Filter by student ID
+            ->first(); // Use first() to get a single record
+        
+        // Check if data exists and return the result
+        if ($data) {
+            return response()->json($data, 200);
+        } else {
+            // If no record is found for the given student ID
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+    }
     
     
 
