@@ -647,7 +647,8 @@ public function receiptdisplay(Request $request, $id) {
 
         // Prepare the new image name
         $extension = $request->filename->extension();
-        $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
+        // $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
+        $imageName = $id . '.' . $extension;
 
         $htdocsPath = 'C:/xampp/htdocs/SOA'; 
         if (!file_exists($htdocsPath)) {
