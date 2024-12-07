@@ -198,10 +198,14 @@ class DsfController extends Controller
     public function display() {
         try {
             Log::info('Fetching enrollment data started.');
-        
+            
+            // Get the current year and next year
+            $currentYear = date('Y');  // Current year (e.g., 2024)
+            $nextYear = $currentYear + 1;  // Next year (e.g., 2025)
+    
             // Enable query log to track the SQL being run
             DB::enableQueryLog();
-        
+            
             // Execute the query to fetch data
             $data = DB::table('enrollments')
                 ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
@@ -232,31 +236,66 @@ class DsfController extends Controller
                     'tuition_fees.general',
                     'tuition_fees.esc',
                     'tuition_fees.subsidy',
-                    DB::raw('COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - COALESCE(payments.amount_paid, 0) AS remaining_balance')
+                    // Compute the remaining balance considering the tuition fees and payments
+                    DB::raw('
+                        COALESCE(tuition_fees.tuition, 0) + 
+                        COALESCE(tuition_fees.general, 0) + 
+                        COALESCE(tuition_fees.esc, 0) + 
+                        COALESCE(tuition_fees.subsidy, 0) - 
+                        COALESCE(payments.amount_paid, 0) AS remaining_balance
+                    ')
                 )
-                ->distinct('students.LRN') // Make sure to only get distinct records based on LRN or any other unique identifier
+                // Filter to include only the current year + next year (e.g., "2024-2025")
+                ->where('enrollments.school_year', '=', $currentYear . '-' . $nextYear)
+                ->groupBy(
+                    'students.LRN',
+                    'students.lname',
+                    'students.fname',
+                    'students.mname',
+                    'students.suffix',
+                    'students.gender',
+                    'students.address',
+                    'students.contact_no',
+                    'enrollments.grade_level',
+                    'enrollments.date_register',
+                    'enrollments.guardian_name',
+                    'enrollments.public_private',
+                    'enrollments.school_year',
+                    'enrollments.regapproval_date',
+                    'enrollments.payment_approval',
+                    'payments.OR_number',
+                    'payments.amount_paid',
+                    'payments.proof_payment',
+                    'payments.date_of_payment',
+                    'payments.description',
+                    'tuition_fees.tuition',
+                    'tuition_fees.general',
+                    'tuition_fees.esc',
+                    'tuition_fees.subsidy'
+                )
                 ->get();
-        
+            
             // Log the executed SQL query
             Log::info('SQL Query Executed: ' . json_encode(DB::getQueryLog()));
-        
+    
             // Check if data is empty and log accordingly
             if ($data->isEmpty()) {
                 Log::warning('No data found for the provided filter.');
             } else {
                 Log::info('Fetching enrollment data completed successfully.');
             }
-        
+    
             return response()->json($data, 200);
-        
+    
         } catch (\Exception $e) {
             // Log the exception error
             Log::error('Error fetching enrollment data: ' . $e->getMessage());
-            
+    
             // Return a JSON response with the error message
             return response()->json(['error' => 'An error occurred while fetching data.'], 500);
         }
     }
+    
     
     
     
@@ -554,8 +593,14 @@ public function receiptdisplay(Request $request, $id) {
                     'payments.OR_number',
                     'payments.date_of_payment',
                     'tuition_fees.tuition',
+                    'tuition_fees.general',
+                    'tuition_fees.esc',
+                    'tuition_fees.subsidy',
                     DB::raw('COALESCE(SUM(payments.amount_paid), 0) AS total_paid'),
-                    DB::raw('COALESCE(SUM(tuition_fees.tuition), 0) AS total_tuition')
+                    DB::raw('COALESCE(SUM(tuition_fees.tuition), 0) AS total_tuition'),
+                    DB::raw('COALESCE(SUM(tuition_fees.general), 0) AS total_general'),
+                    DB::raw('COALESCE(SUM(tuition_fees.esc), 0) AS total_esc'),
+                    DB::raw('COALESCE(SUM(tuition_fees.subsidy), 0) AS total_subsidy')
                 )
                 ->groupBy(
                     'students.LRN',
@@ -567,43 +612,61 @@ public function receiptdisplay(Request $request, $id) {
                     'payments.OR_number',
                     'payments.date_of_payment',
                     'tuition_fees.tuition',
+                    'tuition_fees.general',
+                    'tuition_fees.esc',
+                    'tuition_fees.subsidy'
                 )
                 ->get();
-
-            // Calculate the tuition fee (assumed to be the same for the student)
-            $tuition = $payments->isNotEmpty() ? $payments[0]->total_tuition : 0;
-
-            // Initialize remaining balance
-            $remainingBalance = $tuition;
-
-            // Create an array to hold the payment details with running balance
-            $paymentDetails = [];
-
-            foreach ($payments as $payment) {
-                // Subtract the current payment from the remaining balance
-                $remainingBalance -= $payment->amount_paid;
-
-                // Add to payment details with the current balance
-                $paymentDetails[] = [
-                    'LRN' => $payment->LRN,
-                    'name' => "{$payment->lname} {$payment->fname} {$payment->mname}",
-                    'tuition' => $payment->tuition,
-                    'OR_number' => $payment->OR_number,
-                    'description' => $payment->description,
-                    'amount_paid' => $payment->amount_paid,
-                    'date_of_payment' => $payment->date_of_payment,
-                    'remaining_balance' => $remainingBalance
-                ];
-            }
-
-            // You can now return or use $paymentDetails as needed
-            return response()->json([
-                'tuition_fee' => $tuition,
-                'payments' => $paymentDetails,
-                'remaining_balance' => $remainingBalance,
-            ], 200);
-
+        
+        // Calculate the total tuition, general, esc, and subsidy fees (add them all up)
+        $tuition = $payments->isNotEmpty() ? $payments[0]->total_tuition : 0;
+        $general = $payments->isNotEmpty() ? $payments[0]->total_general : 0;
+        $esc = $payments->isNotEmpty() ? $payments[0]->total_esc : 0;
+        $subsidy = $payments->isNotEmpty() ? $payments[0]->total_subsidy : 0;
+        
+        // Calculate the total balance before payments
+        $totalBalance = $tuition + $general + $esc + $subsidy;
+    
+        // Initialize remaining balance
+        $remainingBalance = $totalBalance;
+    
+        // Create an array to hold the payment details with running balance
+        $paymentDetails = [];
+        $totalPaid = 0; // This will hold the total paid amount
+    
+        foreach ($payments as $payment) {
+            // Subtract the current payment from the remaining balance
+            $remainingBalance -= $payment->amount_paid;
+    
+            // Add to payment details with the current balance
+            $paymentDetails[] = [
+                'LRN' => $payment->LRN,
+                'name' => "{$payment->lname} {$payment->fname} {$payment->mname}",
+                'tuition' => $payment->tuition,
+                'general' => $payment->general,
+                'esc' => $payment->esc,
+                'subsidy' => $payment->subsidy,
+                'OR_number' => $payment->OR_number,
+                'description' => $payment->description,
+                'amount_paid' => $payment->amount_paid,
+                'date_of_payment' => $payment->date_of_payment,
+                'remaining_balance' => $remainingBalance
+            ];
+    
+            // Add the current payment to the total paid amount
+            $totalPaid += $payment->amount_paid;
+        }
+    
+        // Return the total paid, total balance, and payment details
+        return response()->json([
+            'total_balance' => $totalBalance,
+            'payments' => $paymentDetails,
+            'remaining_balance' => $remainingBalance,
+            'total_paid' => $totalPaid  // Added total paid here
+        ], 200);
     }
+    
+    
     
     
     public function updatepayment(Request $request, $id) {
@@ -652,7 +715,8 @@ public function receiptdisplay(Request $request, $id) {
         // $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
         $imageName = $id . '.' . $extension;
 
-        $htdocsPath = 'C:/xampp/htdocs/SOA'; 
+        $htdocsPath = 'D:/Laravel/backup/apiDSF/public'; 
+        // $htdocsPath = 'C:/xampp/htdocs/SOA'; 
         if (!file_exists($htdocsPath)) {
             mkdir($htdocsPath, 0777, true);
         }
