@@ -198,14 +198,14 @@ class DsfController extends Controller
     public function display() {
         try {
             Log::info('Fetching enrollment data started.');
-            
+    
             // Get the current year and next year
             $currentYear = date('Y');  // Current year (e.g., 2024)
             $nextYear = $currentYear + 1;  // Next year (e.g., 2025)
     
             // Enable query log to track the SQL being run
             DB::enableQueryLog();
-            
+    
             // Execute the query to fetch data
             $data = DB::table('enrollments')
                 ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
@@ -240,7 +240,13 @@ class DsfController extends Controller
                     DB::raw('
                         COALESCE(tuition_fees.tuition, 0) + 
                         COALESCE(tuition_fees.general, 0) + 
-                        COALESCE(tuition_fees.esc, 0) + 
+                        (
+                            CASE
+                                WHEN enrollments.public_private = "private" THEN 14000
+                                WHEN enrollments.public_private = "public" THEN 17500
+                                ELSE COALESCE(tuition_fees.esc, 0)
+                            END
+                        ) - 
                         COALESCE(tuition_fees.subsidy, 0) - 
                         COALESCE(payments.amount_paid, 0) AS remaining_balance
                     ')
@@ -274,7 +280,7 @@ class DsfController extends Controller
                     'tuition_fees.subsidy'
                 )
                 ->get();
-            
+    
             // Log the executed SQL query
             Log::info('SQL Query Executed: ' . json_encode(DB::getQueryLog()));
     
@@ -296,7 +302,7 @@ class DsfController extends Controller
         }
     }
     
-    
+     
     
     
     public function displaylist() {
@@ -357,6 +363,7 @@ class DsfController extends Controller
         return response()->json($data, 200);
     }
 
+    
     public function displayIN() {
         $data = DB::table('enrollments')
         ->join('students', 'enrollments.LRN', '=', 'students.LRN')
