@@ -207,79 +207,87 @@ class DsfController extends Controller
             DB::enableQueryLog();
     
             // Execute the query to fetch data
-            $data = DB::table('enrollments')
-                ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
-                ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
-                ->leftJoin('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
-                ->select(
-                    'students.LRN',
-                    'students.lname',
-                    'students.fname',
-                    'students.mname',
-                    'students.suffix',
-                    'students.gender',
-                    'students.address',
-                    'students.contact_no',
-                    'enrollments.grade_level',
-                    'enrollments.date_register',
-                    'enrollments.guardian_name',
-                    'enrollments.public_private',
-                    'enrollments.school_year',
-                    'enrollments.regapproval_date',
-                    'enrollments.payment_approval',
-                    'payments.OR_number',
-                    'payments.amount_paid',
-                    'payments.proof_payment',
-                    'payments.date_of_payment',
-                    'payments.description',
-                    'tuition_fees.tuition',
-                    'tuition_fees.general',
-                    'tuition_fees.esc',
-                    'tuition_fees.subsidy',
-                    // Compute the remaining balance considering the tuition fees and payments
-                    DB::raw('
-                        COALESCE(tuition_fees.tuition, 0) + 
-                        COALESCE(tuition_fees.general, 0) + 
-                        (
-                            CASE
-                                WHEN enrollments.public_private = "private" THEN 14000
-                                WHEN enrollments.public_private = "public" THEN 17500
-                                ELSE COALESCE(tuition_fees.esc, 0)
-                            END
-                        ) - 
-                        COALESCE(tuition_fees.subsidy, 0) - 
-                        COALESCE(payments.amount_paid, 0) AS remaining_balance
-                    ')
-                )
-                // Filter to include only the current year + next year (e.g., "2024-2025")
-                ->where('enrollments.school_year', '=', $currentYear . '-' . $nextYear)
-                ->groupBy(
-                    'students.LRN',
-                    'students.lname',
-                    'students.fname',
-                    'students.mname',
-                    'students.suffix',
-                    'students.gender',
-                    'students.address',
-                    'students.contact_no',
-                    'enrollments.grade_level',
-                    'enrollments.date_register',
-                    'enrollments.guardian_name',
-                    'enrollments.public_private',
-                    'enrollments.school_year',
-                    'enrollments.regapproval_date',
-                    'enrollments.payment_approval',
-                    'payments.OR_number',
-                    'payments.amount_paid',
-                    'payments.proof_payment',
-                    'payments.date_of_payment',
-                    'payments.description',
-                    'tuition_fees.tuition',
-                    'tuition_fees.general',
-                    'tuition_fees.esc',
-                    'tuition_fees.subsidy'
-                )
-                ->get();
+                    $data = DB::table('enrollments')
+            ->leftJoin('students', 'enrollments.LRN', '=', 'students.LRN')
+            ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
+            ->leftJoin('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+            ->select(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'students.contact_no',
+                'enrollments.grade_level',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuition_fees.tuition',
+                'tuition_fees.general',
+                'tuition_fees.esc',
+                'tuition_fees.subsidy',
+                // Compute the remaining balance
+                DB::raw('
+                    COALESCE(tuition_fees.tuition, 0) + 
+                    COALESCE(tuition_fees.general, 0) + 
+                    (
+                        CASE
+                            WHEN enrollments.public_private = "private" THEN 14000
+                            WHEN enrollments.public_private = "public" THEN 17500
+                            ELSE COALESCE(tuition_fees.esc, 0)
+                        END
+                    ) - 
+                    COALESCE(tuition_fees.subsidy, 0) - 
+                    COALESCE(payments.amount_paid, 0) AS remaining_balance
+                '),
+                // New computation for total tuition
+                DB::raw('
+                    COALESCE(tuition_fees.tuition, 0) + 
+                    COALESCE(tuition_fees.general, 0) + 
+                    COALESCE(tuition_fees.esc, 0) + 
+                    COALESCE(tuition_fees.subsidy, 0) AS total_tuition
+                ')
+            )
+            // Filter for the current and next school year
+            ->where('enrollments.school_year', '=', $currentYear . '-' . $nextYear)
+            ->groupBy(
+                'students.LRN',
+                'students.lname',
+                'students.fname',
+                'students.mname',
+                'students.suffix',
+                'students.gender',
+                'students.address',
+                'students.contact_no',
+                'enrollments.grade_level',
+                'enrollments.date_register',
+                'enrollments.guardian_name',
+                'enrollments.public_private',
+                'enrollments.school_year',
+                'enrollments.regapproval_date',
+                'enrollments.payment_approval',
+                'payments.OR_number',
+                'payments.amount_paid',
+                'payments.proof_payment',
+                'payments.date_of_payment',
+                'payments.description',
+                'tuition_fees.tuition',
+                'tuition_fees.general',
+                'tuition_fees.esc',
+                'tuition_fees.subsidy'
+            )
+            ->get();
+
     
             // Log the executed SQL query
             Log::info('SQL Query Executed: ' . json_encode(DB::getQueryLog()));
@@ -367,7 +375,7 @@ class DsfController extends Controller
     public function displayIN() {
         $data = DB::table('enrollments')
         ->join('students', 'enrollments.LRN', '=', 'students.LRN')
-        ->join('payments', 'students.LRN', '=', 'payments.LRN')
+        ->leftJoin('payments', 'students.LRN', '=', 'payments.LRN')
         ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
         ->select(
             'students.LRN',
@@ -379,19 +387,19 @@ class DsfController extends Controller
             'students.address',
             'enrollments.grade_level',
             'students.contact_no',
-            // 'enrollments.date_register',
-            // 'enrollments.guardian_name',
-            // 'enrollments.public_private',
-            // 'enrollments.school_year',
-            // 'enrollments.regapproval_date',
+            'enrollments.date_register',
+            'enrollments.guardian_name',
+            'enrollments.public_private',
+            'enrollments.school_year',
+            'enrollments.regapproval_date',
             'enrollments.payment_approval',
-            // 'payments.OR_number',
-            // 'payments.amount_paid',
-            // 'payments.proof_payment',
-            // 'payments.date_of_payment',
-            // 'payments.description',
-            // 'tuition_fees.tuition',
-            // DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') 
+            'payments.OR_number',
+            'payments.amount_paid',
+            'payments.proof_payment',
+            'payments.date_of_payment',
+            'payments.description',
+            'tuition_fees.tuition',
+            DB::raw('tuition_fees.tuition - payments.amount_paid AS remaining_balance') 
         )
         ->groupBy(
             'students.LRN',
@@ -403,18 +411,18 @@ class DsfController extends Controller
             'students.address',
             'enrollments.grade_level',
             'students.contact_no',
-            // 'enrollments.date_register',
-            // 'enrollments.guardian_name',
-            // 'enrollments.public_private',
-            // 'enrollments.school_year',
-            // 'enrollments.regapproval_date',
+            'enrollments.date_register',
+            'enrollments.guardian_name',
+            'enrollments.public_private',
+            'enrollments.school_year',
+            'enrollments.regapproval_date',
             'enrollments.payment_approval',
-            // 'payments.OR_number',
-            // 'payments.amount_paid',
-            // 'payments.proof_payment',
-            // 'payments.date_of_payment',
-            // 'payments.description',
-            // 'tuition_fees.tuition',
+            'payments.OR_number',
+            'payments.amount_paid',
+            'payments.proof_payment',
+            'payments.date_of_payment',
+            'payments.description',
+            'tuition_fees.tuition',
         )
         ->get();
     
@@ -465,6 +473,9 @@ public function receiptdisplay(Request $request, $id) {
     
     // Check if data exists and return the result
     if ($data) {
+        // Log the proof of payment path
+        \Log::info('Proof of payment for student LRN: '.$data->LRN.' - Path: '.$data->proof_payment);
+        
         return response()->json($data, 200);
     } else {
         // If no record is found for the given student ID
