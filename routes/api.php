@@ -12,6 +12,18 @@ Route::get('/', function () {
 });
 
 
+Route::put('/update-password', [DsfController::class, 'updatePass']);
+Route::post('/upload-image', [DsfController::class, 'uploadImage']);
+Route::get('assets/adminPic/{filename}', function ($filename) {
+    $path = public_path('assets/adminPic/' . $filename);
+    
+    if (file_exists($path)) {
+        return response()->file($path);
+    }
+
+    abort(404);
+});
+
 
 Route::post('/student', [StudentsController::class, 'student']);
 Route::post('/enrollment', [EnrollmentsController::class, 'enrollment']);
@@ -59,3 +71,5 @@ Route::get('/tuitiondisplay', [DsfController::class, 'tuitiondisplay']);
 Route::put('/updateTuitionFee/{id}', [DsfController::class, 'updateTuitionFee']);
 
 Route::get('/findfees/{id}', [DsfController::class, 'findfees']);
+
+Route::post('/upload-images', [DsfController::class, 'upload']);

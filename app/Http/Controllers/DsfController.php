@@ -72,6 +72,79 @@ class DsfController extends Controller
         // return 'logout';
     }
 
+      // editing personal account
+      public function updatePass(Request $request){
+          // Validate incoming request
+          $request->validate([
+              'admin_id' => 'required|integer|exists:admins,admin_id',
+              'oldPassword' => 'nullable|string', // Make oldPassword optional
+              'newPassword' => 'nullable|string|min:8|confirmed', // Allow newPassword to be optional
+              'fname' => 'required|string|max:255',
+              'mname' => 'required|string|max:255',
+              'lname' => 'required|string|max:255',
+              'email' => 'required|email|max:255|unique:admins,email,' . $request->admin_id . ',admin_id', // Check uniqueness for email
+              'address' => 'required|string|max:255',
+          ]);
+      
+          // Retrieve user
+          $user = Admin::find($request->admin_id);
+      
+          // If old password is provided, check it
+          if ($request->oldPassword && !Hash::check($request->oldPassword, $user->password)) {
+              return response()->json(['message' => 'Wrong password'], 401);
+          }
+      
+          // Update user details
+          if ($request->newPassword) {
+              $user->password = Hash::make($request->newPassword); // Update password if provided
+          }
+          
+          $user->fname = $request->fname;
+          $user->mname = $request->mname;
+          $user->lname = $request->lname;
+          $user->email = $request->email;
+          $user->address = $request->address;
+      
+          $user->save(); // Save all changes
+      
+          return response()->json(['message' => 'User details updated successfully']);
+          }
+
+  public function uploadImage(Request $request){
+          $request->validate([
+              'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+              'admin_id' => 'required|exists:admins,admin_id'
+          ]);
+      
+          try {
+              $admin = Admin::findOrFail($request->input('admin_id'));
+              $image = $request->file('image');
+              $imageName = time() . '.' . $image->getClientOriginalExtension();
+              $destinationPath = public_path('assets/adminPic');
+      
+              // Ensure the directory exists
+              if (!is_dir($destinationPath)) {
+                  mkdir($destinationPath, 0755, true);
+              }
+      
+              // Delete the old image if exists
+              if ($admin->admin_pic && file_exists($path = $destinationPath . '/' . $admin->admin_pic)) {
+                  unlink($path);
+              }
+      
+              // Move the new image and update the admin profile
+              $image->move($destinationPath, $imageName);
+              $admin->update(['admin_pic' => $imageName]);
+      
+              return response()->json([
+                  'message' => 'Image uploaded successfully.',
+                  'image_url' => url('assets/adminPic/' . $imageName)
+              ]);
+          } catch (\Exception $e) {
+              return response()->json(['error' => 'Image upload failed.'], 500);
+          }
+          }
+
     // editing personal account
     public function findacc($id){
         $acc = Admin::find($id);
@@ -82,77 +155,79 @@ class DsfController extends Controller
         return response()->json($acc,200);
     }
 
-    public function updateacc(Request $request, $admin_id){
-        // Retrieve the account (dsf) by ID
-        $acc = Admin::find($admin_id);
+    // public function updateacc(Request $request, $admin_id){
+    //     // Retrieve the account (dsf) by ID
+    //     $acc = Admin::find($admin_id);
 
-        // If the account does not exist, return a 404 error
-        if (is_null($acc)) {
-            return response()->json(['message' => 'Account not found'], 404);
-        }
+    //     // If the account does not exist, return a 404 error
+    //     if (is_null($acc)) {
+    //         return response()->json(['message' => 'Account not found'], 404);
+    //     }
 
-        // Prepare the data for updating the account
-        $input = $request->all();
+    //     // Prepare the data for updating the account
+    //     $input = $request->all();
         
-        // Check if a new password is provided and hash it if necessary
-        if ($request->filled('password')) {
-            $input['password'] = bcrypt($request->password);
-            $input['currentPassword'] = $acc->password;
-        }else {
-            $input['password'] = $acc->password;
-        }
+    //     // Check if a new password is provided and hash it if necessary
+    //     if ($request->filled('password')) {
+    //         $input['password'] = bcrypt($request->password);
+    //         $input['currentPassword'] = $acc->password;
+    //     }else {
+    //         $input['password'] = $acc->password;
+    //     }
 
-        // Update the account data
-        $acc->update($input);
+    //     // Update the account data
+    //     $acc->update($input);
 
-        // Return a success response with the updated account data
-        return response()->json([
-            'message' => 'Account updated successfully',
-            'account' => $acc
-        ], 200);
-    }
+    //     // Return a success response with the updated account data
+    //     return response()->json([
+    //         'message' => 'Account updated successfully',
+    //         'account' => $acc
+    //     ], 200);
+    // }
 
     
-    public function updateProfileImage(Request $request, $id){
-        $request->validate([
-            'admin_pic' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ]);
+    // public function updateProfileImage(Request $request, $id){
+    //     $request->validate([
+    //         'admin_pic' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+    //     ]);
     
-        $admin = Admin::findOrFail($id);
+    //     $admin = Admin::findOrFail($id);
     
-        if ($request->hasFile('admin_pic')) {
-            if ($admin->admin_pic) {
-                Storage::delete('public/profile_images/' . $admin->admin_pic);
+    //     if ($request->hasFile('admin_pic')) {
+    //         if ($admin->admin_pic) {
+    //             Storage::delete('public/profile_images/' . $admin->admin_pic);
                 
-                $htdocsImagePath = 'D:\Laravel\backup\apiDSF\public\profile_images' . $admin->admin_pic;
-                if (file_exists($htdocsImagePath)) {
-                    unlink($htdocsImagePath);
-                }
-            }
+    //             $htdocsImagePath = 'D:\Laravel\backup\apiDSF\public\profile_images' . $admin->admin_pic;
+    //             if (file_exists($htdocsImagePath)) {
+    //                 unlink($htdocsImagePath);
+    //             }
+    //         }
     
-            $extension = $request->admin_pic->extension();
-            $imageName = time() . '_' . $admin->id . '.' . $extension;
-            // $request->Admin_image->storeAs('public/profile_images', $imageName);
+    //         $extension = $request->admin_pic->extension();
+    //         $imageName = time() . '_' . $admin->id . '.' . $extension;
+    //         // $request->Admin_image->storeAs('public/profile_images', $imageName);
     
-            $htdocsPath = 'D:\Laravel\backup\apiDSF\public\profile_images'; 
+    //         $htdocsPath = 'D:\Laravel\backup\apiDSF\public\profile_images'; 
     
-            if (!file_exists($htdocsPath)) {
-                mkdir($htdocsPath, 0777, true);
-            }
+    //         if (!file_exists($htdocsPath)) {
+    //             mkdir($htdocsPath, 0777, true);
+    //         }
     
-            $request->admin_pic->move($htdocsPath, $imageName);
+    //         $request->admin_pic->move($htdocsPath, $imageName);
     
-            $admin->admin_pic = $imageName;
-            $admin->save();
+    //         $admin->admin_pic = $imageName;
+    //         $admin->save();
     
-            return response()->json([
-                'message' => 'Profile image updated successfully',
-                'image_url' => asset('profile_images/' . $imageName) 
-            ], 200);
-        }
+    //         return response()->json([
+    //             'message' => 'Profile image updated successfully',
+    //             'image_url' => asset('profile_images/' . $imageName) 
+    //         ], 200);
+    //     }
     
-        return response()->json(['message' => 'No image file uploaded'], 400);
-    }
+    //     return response()->json(['message' => 'No image file uploaded'], 400);
+    // }
+
+
 
     // public function updateProfileImage(Request $request, $id){
     //     $request->validate([
@@ -246,14 +321,21 @@ class DsfController extends Controller
                             WHEN enrollments.public_private = "public" THEN 17500
                             ELSE COALESCE(tuition_fees.esc, 0)
                         END
-                    ) - 
-                    COALESCE(tuition_fees.subsidy, 0) - 
+                    ) + 
+                    COALESCE(tuition_fees.subsidy, 0) + 
                     COALESCE(payments.amount_paid, 0) AS remaining_balance
                 '),
                 // New computation for total tuition
                 DB::raw('
                     COALESCE(tuition_fees.tuition, 0) + 
-                    COALESCE(tuition_fees.general, 0) + 
+                    COALESCE(tuition_fees.general, 0) +
+                     (
+                        CASE
+                            WHEN enrollments.public_private = "private" THEN 14000
+                            WHEN enrollments.public_private = "public" THEN 17500
+                            ELSE COALESCE(tuition_fees.esc, 0)
+                        END
+                    ) +  
                     COALESCE(tuition_fees.esc, 0) + 
                     COALESCE(tuition_fees.subsidy, 0) AS total_tuition
                 ')
@@ -1292,5 +1374,64 @@ public function receiptdisplay(Request $request, $id) {
     }
 
 
+    public function upload(Request $request){
+        // Validate the incoming request
+        $request->validate([
+            'images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+    
+        Log::info('Image upload initiated.', ['request' => $request->all()]);
+    
+        // Initialize an array to hold filenames
+        $filenames = [];
+    
+        // Process each uploaded image
+        foreach ($request->file('images') as $image) {
+            // Get the original filename and extension
+            $originalFilename = $image->getClientOriginalName();
+            $extension = $image->extension();
+    
+            // Move the image to the desired location (public/images) using the original filename
+            $image->move(public_path('images'), $originalFilename);
+    
+            Log::info('Image uploaded successfully.', ['filename' => $originalFilename]);
+    
+            // Store LRN based on original filename (without extension)
+            $filenames[] = pathinfo($originalFilename, PATHINFO_FILENAME);
+        }
+    
+        // Log filenames before querying students
+        Log::info('Filenames being queried for students.', ['filenames' => $filenames]);
+    
+        // Get LRNs from students table based on filenames
+        $students = DB::table('students')->whereIn('LRN', $filenames)->get();
+    
+        Log::info('Retrieved students based on filenames.', ['students' => $students]);
+    
+        // Create a mapping of LRN to the corresponding filename
+        $filenameMap = [];
+        foreach ($filenames as $index => $filename) {
+            if (isset($students[$index])) {
+                $filenameMap[$students[$index]->LRN] = $filename . '.' . $extension; // Map LRN to the corresponding filename
+            }
+        }
+    
+        foreach ($students as $student) {
+            // Use the mapped filename for financial statements
+            $uniqueFilename = $filenameMap[$student->LRN] ?? null;
+    
+            if ($uniqueFilename) {
+                financial_statements::create([
+                    'LRN' => $student->LRN,
+                    'filename' => $uniqueFilename,
+                    'date_uploaded' => now()->format('Y-m-d')
+                ]);
+    
+                Log::info('Financial statement entry created.', ['LRN' => $student->LRN, 'filename' => $uniqueFilename]);
+            }
+        }
+    
+        return response()->json(['message' => 'Images uploaded successfully']);
+    }
    
 }
