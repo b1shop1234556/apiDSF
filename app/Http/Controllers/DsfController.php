@@ -124,7 +124,7 @@ class DsfController extends Controller
             if ($admin->admin_pic) {
                 Storage::delete('public/profile_images/' . $admin->admin_pic);
                 
-                $htdocsImagePath = 'C:/xampp/htdocs/profile_images/' . $admin->admin_pic;
+                $htdocsImagePath = 'D:\Laravel\backup\apiDSF\public\profile_images' . $admin->admin_pic;
                 if (file_exists($htdocsImagePath)) {
                     unlink($htdocsImagePath);
                 }
@@ -134,7 +134,7 @@ class DsfController extends Controller
             $imageName = time() . '_' . $admin->id . '.' . $extension;
             // $request->Admin_image->storeAs('public/profile_images', $imageName);
     
-            $htdocsPath = 'C:/xampp/htdocs/profile_images'; 
+            $htdocsPath = 'D:\Laravel\backup\apiDSF\public\profile_images'; 
     
             if (!file_exists($htdocsPath)) {
                 mkdir($htdocsPath, 0777, true);
@@ -733,7 +733,7 @@ public function receiptdisplay(Request $request, $id) {
         // $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
         $imageName = $id . '.' . $extension;
 
-        $htdocsPath = 'D:/Laravel/backup/apiDSF/public'; 
+        $htdocsPath = 'D:/Laravel/backup/apiDSF/public/SOA_PIC'; 
         // $htdocsPath = 'C:/xampp/htdocs/SOA'; 
         if (!file_exists($htdocsPath)) {
             mkdir($htdocsPath, 0777, true);
@@ -921,84 +921,7 @@ public function receiptdisplay(Request $request, $id) {
     }
     
     // view_financials
-    // public function displayFinancials(Request $request, $id) {
-    //     // Query the database using a join and select statement
-    //     $data = DB::table('enrollments')
-    //         ->join('students', 'enrollments.LRN', '=', 'students.LRN')
-    //         ->join('payments', 'students.LRN', '=', 'payments.LRN')
-    //         ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
-    //         ->leftJoin('financial_statements', 'students.LRN', '=', 'financial_statements.LRN') // Added the left join with financial_statements
-    //         ->select(
-    //             'students.LRN',
-    //             'students.lname',
-    //             'students.fname',
-    //             'students.mname',
-    //             'students.suffix',
-    //             'students.gender',
-    //             'students.address',
-    //             'students.contact_no',
-    //             'enrollments.grade_level',
-    //             'enrollments.date_register',
-    //             'enrollments.guardian_name',
-    //             'enrollments.public_private',
-    //             'enrollments.school_year',
-    //             'enrollments.regapproval_date',
-    //             'payments.OR_number',
-    //             'payments.amount_paid',
-    //             'payments.proof_payment',
-    //             'payments.date_of_payment',
-    //             'payments.description',
-    //             'tuition_fees.tuition',
-    //             'tuition_fees.general',
-    //             'tuition_fees.esc',
-    //             'tuition_fees.subsidy',
-    //             // Ensure amount_paid is handled even if it's null
-    //             DB::raw('
-    //                 COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + 
-    //                 COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - 
-    //                 COALESCE(payments.amount_paid, 0) AS remaining_balance
-    //             '), // Calculate remaining balance
-    //             'financial_statements.soa_id', // Added financial_statements columns
-    //             'financial_statements.filename', // Include the filename
-    //             'financial_statements.date_uploaded' // Date of the file upload
-    //         )
-    //         ->where('students.LRN', $id) // Filter by student ID
-    //         ->first(); // Use first() to get a single record
-        
-    //     // Check if data exists and return the result
-    //     if ($data) {
-    //         // Log the filename path if it exists
-    //         if ($data->filename) {
-    //             \Log::info('Financial statement filename path: ', ['filename' => $data->filename]);
-    //         }
-            
-    //         return response()->json($data, 200);
-    //     } else {
-    //         // If no record is found for the given student ID
-    //         return response()->json(['message' => 'Student not found'], 404);
-    //     }
-    // }
-
-
-
     public function displayFinancials(Request $request, $id) {
-        // Check if a file is uploaded
-        if ($request->hasFile('proof_payment')) {
-            // Retrieve the uploaded file
-            $file = $request->file('proof_payment');
-            
-            // Get the original filename
-            $filename = $file->getClientOriginalName();
-            
-            // Store the file in a specific path
-            $path = $file->storeAs('uploads', $filename); // Adjust path as necessary
-    
-            // Log the filename for debugging
-            \Log::info('Uploaded proof of payment filename: ', ['filename' => $filename]);
-        } else {
-            \Log::warning('No proof of payment file uploaded.');
-        }
-    
         // Query the database using a join and select statement
         $data = DB::table('enrollments')
             ->join('students', 'enrollments.LRN', '=', 'students.LRN')
@@ -1028,35 +951,112 @@ public function receiptdisplay(Request $request, $id) {
                 'tuition_fees.tuition',
                 'tuition_fees.general',
                 'tuition_fees.esc',
-                DB::raw('COALESCE(tuition_fees.subsidy, 0) AS subsidy'),
+                'tuition_fees.subsidy',
+                // Ensure amount_paid is handled even if it's null
                 DB::raw('
                     COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + 
                     COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - 
                     COALESCE(payments.amount_paid, 0) AS remaining_balance
-                ')
+                '), // Calculate remaining balance
+                'financial_statements.soa_id', // Added financial_statements columns
+                'financial_statements.filename', // Include the filename
+                'financial_statements.date_uploaded' // Date of the file upload
             )
             ->where('students.LRN', $id) // Filter by student ID
             ->first(); // Use first() to get a single record
         
         // Check if data exists and return the result
         if ($data) {
-            // Construct image URL based on where images are stored
-            if (property_exists($data, 'image')) {
-                $data->image_url = url('uploads/' . $data->image); // Construct image URL
-                
-                // Log for debugging
-                \Log::info('Image URL: ', ['image_url' => $data->image_url]);
-            } else {
-                // If no image property exists, set a default or null value
-                $data->image_url = null; // or set a default image URL
+            // Log the filename path if it exists
+            if ($data->filename) {
+                \Log::info('Financial statement filename path: ', ['filename' => $data->filename]);
             }
-    
+            
             return response()->json($data, 200);
         } else {
             // If no record is found for the given student ID
             return response()->json(['message' => 'Student not found'], 404);
         }
     }
+
+
+
+    // public function displayFinancials(Request $request, $id) {
+    //     // Check if a file is uploaded
+    //     if ($request->hasFile('proof_payment')) {
+    //         // Retrieve the uploaded file
+    //         $file = $request->file('proof_payment');
+            
+    //         // Get the original filename
+    //         $filename = $file->getClientOriginalName();
+            
+    //         // Store the file in a specific path
+    //         $path = $file->storeAs('uploads', $filename); // Adjust path as necessary
+    
+    //         // Log the filename for debugging
+    //         \Log::info('Uploaded proof of payment filename: ', ['filename' => $filename]);
+    //     } else {
+    //         \Log::warning('No proof of payment file uploaded.');
+    //     }
+    
+    //     // Query the database using a join and select statement
+    //     $data = DB::table('enrollments')
+    //         ->join('students', 'enrollments.LRN', '=', 'students.LRN')
+    //         ->join('payments', 'students.LRN', '=', 'payments.LRN')
+    //         ->join('tuition_fees', 'enrollments.grade_level', '=', 'tuition_fees.grade_level')
+    //         ->leftJoin('financial_statements', 'students.LRN', '=', 'financial_statements.LRN') // Added the left join with financial_statements
+    //         ->select(
+    //             'students.LRN',
+    //             'students.lname',
+    //             'students.fname',
+    //             'students.mname',
+    //             'students.suffix',
+    //             'students.gender',
+    //             'students.address',
+    //             'students.contact_no',
+    //             'enrollments.grade_level',
+    //             'enrollments.date_register',
+    //             'enrollments.guardian_name',
+    //             'enrollments.public_private',
+    //             'enrollments.school_year',
+    //             'enrollments.regapproval_date',
+    //             'payments.OR_number',
+    //             'payments.amount_paid',
+    //             'payments.proof_payment',
+    //             'payments.date_of_payment',
+    //             'payments.description',
+    //             'tuition_fees.tuition',
+    //             'tuition_fees.general',
+    //             'tuition_fees.esc',
+    //             DB::raw('COALESCE(tuition_fees.subsidy, 0) AS subsidy'),
+    //             DB::raw('
+    //                 COALESCE(tuition_fees.tuition, 0) + COALESCE(tuition_fees.general, 0) + 
+    //                 COALESCE(tuition_fees.esc, 0) + COALESCE(tuition_fees.subsidy, 0) - 
+    //                 COALESCE(payments.amount_paid, 0) AS remaining_balance
+    //             ')
+    //         )
+    //         ->where('students.LRN', $id) // Filter by student ID
+    //         ->first(); // Use first() to get a single record
+        
+    //     // Check if data exists and return the result
+    //     if ($data) {
+    //         // Construct image URL based on where images are stored
+    //         if (property_exists($data, 'image')) {
+    //             $data->image_url = url('uploads/' . $data->image); // Construct image URL
+                
+    //             // Log for debugging
+    //             \Log::info('Image URL: ', ['image_url' => $data->image_url]);
+    //         } else {
+    //             // If no image property exists, set a default or null value
+    //             $data->image_url = null; // or set a default image URL
+    //         }
+    
+    //         return response()->json($data, 200);
+    //     } else {
+    //         // If no record is found for the given student ID
+    //         return response()->json(['message' => 'Student not found'], 404);
+    //     }
+    // }
     
 
     
@@ -1136,7 +1136,6 @@ public function receiptdisplay(Request $request, $id) {
         return response()->json($data, 200);
     }
     
-
     public function getMessages() {
         // Retrieve messages sent from students to admins
         $messages = messages::leftJoin('students as sender', 'messages.message_sender', '=', 'sender.LRN')
@@ -1198,7 +1197,6 @@ public function receiptdisplay(Request $request, $id) {
         return response()->json(array_values($messagesGrouped), 200);
     }
     
-
     public function displayTWO() {
         // Fetch enrollment data along with messages from both students and admins
         $data = DB::table('enrollments')
@@ -1268,7 +1266,6 @@ public function receiptdisplay(Request $request, $id) {
         return response()->json($data, 200);
     }
     
-
     public function send(Request $request){
         $validator = Validator::make($request->all(), [
             'message_sender' => 'nullable|string',
