@@ -19,10 +19,12 @@ class enrollments extends Model
         'grade_level',
         'contact_no',
         'guardian_name',
+        'guardian_contact',
         'last_attended',
         'public_private',
         'date_register',
         'strand',
         'school_year',
+        'old_account',
     ];
 }

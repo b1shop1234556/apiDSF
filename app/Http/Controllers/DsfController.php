@@ -298,8 +298,10 @@ class DsfController extends Controller
                 'enrollments.grade_level',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
+                'enrollments.guardian_no',
                 'enrollments.public_private',
                 'enrollments.school_year',
+                'enrollments.old_account',
                 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
                 'payments.OR_number',
@@ -354,8 +356,10 @@ class DsfController extends Controller
                 'enrollments.grade_level',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
+                'enrollments.guardian_no',
                 'enrollments.public_private',
                 'enrollments.school_year',
+                'enrollments.old_account',
                 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
                 'payments.OR_number',
@@ -531,8 +535,10 @@ public function receiptdisplay(Request $request, $id) {
             'enrollments.grade_level',
             'enrollments.date_register',
             'enrollments.guardian_name',
+            'enrollments.guardian_no',
             'enrollments.public_private',
             'enrollments.school_year',
+            'enrollments.old_account',
             'enrollments.regapproval_date',
             'payments.OR_number',
             'payments.amount_paid',
@@ -768,40 +774,87 @@ public function receiptdisplay(Request $request, $id) {
     
     
     
-    
     public function updatepayment(Request $request, $id) {
         $request->validate([
             'OR_number' => "required|string",
             'description' => 'required|string',
             'amount_paid' => 'required|numeric',
             'LRN' => 'required|string',
+            'old_account' => 'nullable|numeric', // Validate old_account
         ]);
     
-        // Find the payment record by LRN
-        $payment = DB::table('payments')->where('LRN', $id)->first();
+        // Find the enrollment record by LRN
+        $enrollment = DB::table('enrollments')->where('LRN', $id)->first();
     
-        if (!$payment) {
-            return response()->json(['message' => 'Payment not found'], 404);
+        if (!$enrollment) {
+            return response()->json(['message' => 'Enrollment not found'], 404);
         }
     
-        // Update the payment record
-        DB::table('payments')->where('LRN', $id)->update([
-            'OR_number' => $request->OR_number,
-            'description' => $request->description,
-            'amount_paid' => $request->amount_paid,
-            'LRN' => $request->LRN,
-            'created_at' => now(),
-            'updated_at' => now(),
+        // Update the old_account in the enrollments table
+        DB::table('enrollments')->where('LRN', $id)->update([
+            'old_account' => $request->old_account, // Update old_account
         ]);
     
-        // Retrieve the updated payments
-        $payments = DB::table('payments')->orderBy('created_at', 'desc')->get();
+        // Optionally, you can also update the payments table if needed
+        $payment = DB::table('payments')->where('LRN', $id)->first();
+        
+        if ($payment) {
+            // Update payment record if it exists
+            DB::table('payments')->where('LRN', $id)->update([
+                'OR_number' => $request->OR_number,
+                'description' => $request->description,
+                'amount_paid' => $request->amount_paid,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     
+        // Retrieve updated enrollments and payments
+        $enrollments = DB::table('enrollments')->orderBy('created_at', 'desc')->get();
+        
         return response()->json([
             'message' => 'Success',
-            'data' => $payments,
+            'data' => [
+                'enrollments' => $enrollments,
+                // Optionally include updated payment data if needed
+                // 'payments' => DB::table('payments')->orderBy('created_at', 'desc')->get(),
+            ],
         ], 200);
-    }      
+    }
+    
+    // public function updatepayment(Request $request, $id) {
+    //     $request->validate([
+    //         'OR_number' => "required|string",
+    //         'description' => 'required|string',
+    //         'amount_paid' => 'required|numeric',
+    //         'LRN' => 'required|string',
+    //     ]);
+    
+    //     // Find the payment record by LRN
+    //     $payment = DB::table('payments')->where('LRN', $id)->first();
+    
+    //     if (!$payment) {
+    //         return response()->json(['message' => 'Payment not found'], 404);
+    //     }
+    
+    //     // Update the payment record
+    //     DB::table('payments')->where('LRN', $id)->update([
+    //         'OR_number' => $request->OR_number,
+    //         'description' => $request->description,
+    //         'amount_paid' => $request->amount_paid,
+    //         'LRN' => $request->LRN,
+    //         'created_at' => now(),
+    //         'updated_at' => now(),
+    //     ]);
+    
+    //     // Retrieve the updated payments
+    //     $payments = DB::table('payments')->orderBy('created_at', 'desc')->get();
+    
+    //     return response()->json([
+    //         'message' => 'Success',
+    //         'data' => $payments,
+    //     ], 200);
+    // }      
 
     //Upload.......
     public function uploadfiles(Request $request, $id){
