@@ -19,11 +19,13 @@ return new class extends Migration
             $table->integer('grade_level'); // INT
             $table->string('contact_no', 15); // VARCHAR(15)
             $table->string('guardian_name', 100); // VARCHAR(100)
+            $table->string('guardian_no', 100); // VARCHAR(100)
             $table->string('last_attended', 100); // VARCHAR(100)
             $table->enum('public_private', ['Public', 'Private']); // ENUM
             $table->date('date_register'); // DATE
             $table->string('strand', 50)->nullable(); // VARCHAR(50) NULL
             $table->string('school_year', 10); // VARCHAR(10)
+            $table->decimal('old_account', 100); // VARCHAR(100)
             $table->timestamps(); // Created at and updated at timestamps
         });
     }

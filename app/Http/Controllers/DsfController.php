@@ -868,7 +868,7 @@ public function receiptdisplay(Request $request, $id) {
         // $imageName = time() . '_' . $id . '_' . uniqid() . '.' . $extension;
         $imageName = $id . '.' . $extension;
 
-        $htdocsPath = 'D:/Laravel/backup/apiDSF/public/SOA_PIC'; 
+        $htdocsPath = 'D:/Laravel/backup/apiDSF/public/images'; 
         // $htdocsPath = 'C:/xampp/htdocs/SOA'; 
         if (!file_exists($htdocsPath)) {
             mkdir($htdocsPath, 0777, true);

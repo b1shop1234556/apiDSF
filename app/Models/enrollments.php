@@ -19,7 +19,7 @@ class enrollments extends Model
         'grade_level',
         'contact_no',
         'guardian_name',
-        'guardian_contact',
+        'guardian_no',
         'last_attended',
         'public_private',
         'date_register',
