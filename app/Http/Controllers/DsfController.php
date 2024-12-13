@@ -315,32 +315,40 @@ class DsfController extends Controller
                 'tuition_fees.subsidy',
                 // Compute the remaining balance
                 DB::raw('
-                    COALESCE(tuition_fees.tuition, 0) + 
-                    COALESCE(tuition_fees.general, 0) + 
-                    (
-                        CASE
-                            WHEN enrollments.public_private = "private" THEN 14000
-                            WHEN enrollments.public_private = "public" THEN 17500
-                            ELSE COALESCE(tuition_fees.esc, 0)
-                        END
-                    ) + 
-                    COALESCE(tuition_fees.subsidy, 0) + 
-                    COALESCE(payments.amount_paid, 0) AS remaining_balance
+                    CASE
+                        WHEN enrollments.grade_level BETWEEN 7 AND 10 THEN
+                            COALESCE(tuition_fees.tuition, 0) + 
+                            COALESCE(tuition_fees.general, 0) - 
+                            9000  -- Fixed esc value for grades 7 to 10
+                        WHEN enrollments.grade_level BETWEEN 11 AND 12 THEN
+                            COALESCE(tuition_fees.tuition, 0) + 
+                            COALESCE(tuition_fees.general, 0) - 
+                            COALESCE(tuition_fees.esc, 0) - 
+                            COALESCE(tuition_fees.subsidy, 0) + 
+                            CASE
+                                WHEN enrollments.public_private = "private" THEN 14000
+                                WHEN enrollments.public_private = "public" THEN 17500
+                                ELSE 0
+                            END
+                        ELSE 0
+                    END 
+                    - COALESCE(payments.amount_paid, 0) AS remaining_balance
                 '),
+
                 // New computation for total tuition
-                DB::raw('
-                    COALESCE(tuition_fees.tuition, 0) + 
-                    COALESCE(tuition_fees.general, 0) +
-                     (
-                        CASE
-                            WHEN enrollments.public_private = "private" THEN 14000
-                            WHEN enrollments.public_private = "public" THEN 17500
-                            ELSE COALESCE(tuition_fees.esc, 0)
-                        END
-                    ) +  
-                    COALESCE(tuition_fees.esc, 0) + 
-                    COALESCE(tuition_fees.subsidy, 0) AS total_tuition
-                ')
+                // DB::raw('
+                //     COALESCE(tuition_fees.tuition, 0) + 
+                //     COALESCE(tuition_fees.general, 0) +
+                //      (
+                //         CASE
+                //             WHEN enrollments.public_private = "private" THEN 14000
+                //             WHEN enrollments.public_private = "public" THEN 17500
+                //             ELSE COALESCE(tuition_fees.esc, 0)
+                //         END
+                //     ) +  
+                //     COALESCE(tuition_fees.esc, 0) + 
+                //     COALESCE(tuition_fees.subsidy, 0) AS total_tuition
+                // ')
             )
             // Filter for the current and next school year
             ->where('enrollments.school_year', '=', $currentYear . '-' . $nextYear)
@@ -1055,6 +1063,24 @@ public function receiptdisplay(Request $request, $id) {
         ], 200);
     }
     
+    public function deleteTuitionFee($id){
+    // Check if the record exists
+    $tuitionFee = DB::table('tuition_fees')->where('fee_id', $id)->first();
+
+    if (!$tuitionFee) {
+        return response()->json(['message' => 'Tuition fee not found'], 404);
+    }
+
+    // Delete the record
+    DB::table('tuition_fees')->where('fee_id', $id)->delete();
+
+    // Return a success response
+    return response()->json(['message' => 'Tuition fee deleted successfully'], 200);
+}
+
+
+
+
     // view_financials
     public function displayFinancials(Request $request, $id) {
         // Query the database using a join and select statement

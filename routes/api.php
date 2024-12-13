@@ -65,10 +65,12 @@ Route::get('/displayTWO', [DsfController::class, 'displayTWO']);
 Route::post('/messages', [DsfController::class, 'send']);
 Route::get('/messages', [DsfController::class, 'index']);
 
-//---insert---
+//---tuition_fees---
 Route::post('/addtuitionfee', [DsfController::class, 'addtuitionfee']);
 Route::get('/tuitiondisplay', [DsfController::class, 'tuitiondisplay']);
 Route::put('/updateTuitionFee/{id}', [DsfController::class, 'updateTuitionFee']);
+Route::post('/deleteTuitionFee/{id}', [DsfController::class, 'deleteTuitionFee']);
+
 
 Route::get('/findfees/{id}', [DsfController::class, 'findfees']);
 
