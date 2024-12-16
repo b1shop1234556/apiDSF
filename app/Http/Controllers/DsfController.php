@@ -296,6 +296,7 @@ class DsfController extends Controller
                 'students.address',
                 'students.contact_no',
                 'enrollments.grade_level',
+                'enrollments.strand',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
                 'enrollments.guardian_no',
@@ -315,25 +316,52 @@ class DsfController extends Controller
                 'tuition_fees.subsidy',
                 // Compute the remaining balance
                 DB::raw('
-                    CASE
-                        WHEN enrollments.grade_level BETWEEN 7 AND 10 THEN
-                            COALESCE(tuition_fees.tuition, 0) + 
-                            COALESCE(tuition_fees.general, 0) - 
-                            9000  -- Fixed esc value for grades 7 to 10
-                        WHEN enrollments.grade_level BETWEEN 11 AND 12 THEN
-                            COALESCE(tuition_fees.tuition, 0) + 
-                            COALESCE(tuition_fees.general, 0) - 
-                            COALESCE(tuition_fees.esc, 0) - 
-                            COALESCE(tuition_fees.subsidy, 0) + 
-                            CASE
-                                WHEN enrollments.public_private = "private" THEN 14000
-                                WHEN enrollments.public_private = "public" THEN 17500
-                                ELSE 0
-                            END
-                        ELSE 0
-                    END 
-                    - COALESCE(payments.amount_paid, 0) AS remaining_balance
-                '),
+                CASE
+                    -- For Grades 7 to 10
+                    WHEN enrollments.grade_level BETWEEN 7 AND 10 THEN
+                        CASE 
+                            WHEN tuition_fees.esc IS NOT NULL THEN
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0) - 
+                                COALESCE(tuition_fees.esc, 0)  -- With esc for grades 7 to 10
+                            ELSE
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0)  -- Without esc for grades 7 to 10
+                        END
+                    
+                    -- For Grades 11 to 12 (Private School)
+                    WHEN enrollments.grade_level BETWEEN 11 AND 12 AND enrollments.public_private = "private" THEN
+                        CASE 
+                            WHEN tuition_fees.esc IS NOT NULL THEN
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0) - 
+                                COALESCE(tuition_fees.esc, 0) - 
+                                COALESCE(tuition_fees.subsidy, 0) - 14000  -- With esc for private
+                            ELSE
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0) - 
+                                COALESCE(tuition_fees.subsidy, 0) - 2000  -- Without esc for private
+                        END
+                    
+                    -- For Grades 11 to 12 (Public School)
+                    WHEN enrollments.grade_level BETWEEN 11 AND 12 AND enrollments.public_private = "public" THEN
+                        CASE 
+                            WHEN tuition_fees.esc IS NOT NULL THEN
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0) - 
+                                COALESCE(tuition_fees.esc, 0) - 
+                                COALESCE(tuition_fees.subsidy, 0) - 17500  -- With esc for public
+                            ELSE
+                                COALESCE(tuition_fees.tuition, 0) + 
+                                COALESCE(tuition_fees.general, 0) - 
+                                COALESCE(tuition_fees.subsidy, 0) - 2000  -- Without esc for public
+                        END
+                    
+                    ELSE 0  -- Default case, fallback to 0 if none of the conditions match
+                END
+                - COALESCE(payments.amount_paid, 0) AS remaining_balance
+            ')
+            
 
                 // New computation for total tuition
                 // DB::raw('
@@ -367,6 +395,7 @@ class DsfController extends Controller
                 'enrollments.guardian_no',
                 'enrollments.public_private',
                 'enrollments.school_year',
+                'enrollments.strand',
                 'enrollments.old_account',
                 'enrollments.regapproval_date',
                 'enrollments.payment_approval',
@@ -426,6 +455,7 @@ class DsfController extends Controller
                 'students.address',
                 'students.contact_no',
                 'enrollments.grade_level',
+                'enrollments.strand',
                 // 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -451,6 +481,7 @@ class DsfController extends Controller
                 'students.address',
                 'students.contact_no',
                 'enrollments.grade_level',
+                'enrollments.strand',
                 // 'enrollments.contact_no',
                 'enrollments.date_register',
                 'enrollments.guardian_name',
@@ -485,6 +516,7 @@ class DsfController extends Controller
             'enrollments.guardian_name',
             'enrollments.public_private',
             'enrollments.school_year',
+            'enrollments.strand',
             'enrollments.regapproval_date',
             'enrollments.payment_approval',
             'payments.OR_number',
@@ -509,6 +541,7 @@ class DsfController extends Controller
             'enrollments.guardian_name',
             'enrollments.public_private',
             'enrollments.school_year',
+            'enrollments.strand',
             'enrollments.regapproval_date',
             'enrollments.payment_approval',
             'payments.OR_number',
